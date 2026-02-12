@@ -3,6 +3,11 @@ name = "guardrails"
 version = "0.1.0"
 edition = "2021"
 description = "Enforce architectural decisions AI coding tools keep ignoring"
+license = "MIT"
+repository = "https://github.com/stewartjarod/guardrails"
+readme = "README.md"
+keywords = ["linter", "tailwind", "react", "code-quality"]
+categories = ["development-tools"]
 
 [dependencies]
 regex = "1"
