@@ -43,14 +43,14 @@ guardrails init
 
 # Edit guardrails.toml to fit your project...
 
-# Run checks
-guardrails
+# Scan your project
+guardrails scan
 
-# Validate config without scanning
-guardrails validate
+# Only scan files changed since main
+guardrails scan --changed-only
 
-# Count occurrences (useful for ratchet baselines)
-guardrails count "legacyFetch(" --glob "src/**/*.ts"
+# Generate a ratchet baseline
+guardrails baseline .
 ```
 
 ## Example Output
@@ -227,17 +227,11 @@ message = "Migrate remaining legacyFetch calls to apiFetch"
 suggest = "import { apiFetch } from '@company/http'"
 ```
 
-Use the `count` command to find your current baseline:
+Use the `baseline` command to find your current counts:
 
 ```bash
-$ guardrails count "legacyFetch(" --glob "src/**/*.ts"
-
-  12 occurrences in src/api/client.ts
-   8 occurrences in src/hooks/useData.ts
-  ...
-
-→ Total: 47 occurrences across 12 files
-  Use this as your max_count value to start ratcheting down.
+$ guardrails baseline .
+# Writes .guardrails-baseline.json with counts for all ratchet rules
 ```
 
 The workflow: set `max_count = 47` today. Next sprint, migrate a few call sites, set `max_count = 40`. The number only goes down. Any PR that adds new legacy calls fails CI.
@@ -359,22 +353,46 @@ allowed_classes = ["bg-green-500", "text-red-600"]
 ## CLI Reference
 
 ```
-guardrails [OPTIONS] [COMMAND]
+guardrails <COMMAND>
 
 Commands:
-  check       Run guardrail checks (default when no command given)
-  init        Create a starter guardrails.toml
-  validate    Validate config without running checks
-  count       Count pattern occurrences for ratchet baselines
+  scan        Scan files for rule violations (primary command)
+  baseline    Count ratchet pattern occurrences and write a baseline JSON file
+  init        Generate a starter guardrails.toml for your project
+  mcp         Run as an MCP (Model Context Protocol) server over stdio
+```
 
-Options:
-  -c, --config <PATH>     Config file path [default: guardrails.toml]
-  -f, --format <FORMAT>   Output format [default: pretty]
-  -r, --root <PATH>       Override scan root directory
-  --errors-only           Only report errors (hide warnings and info)
-  --strict                Fail with exit code 1 on warnings too
-  -h, --help              Print help
-  -V, --version           Print version
+### `scan` options
+
+```
+guardrails scan [OPTIONS] [PATHS]...
+
+  -c, --config <PATH>       Config file path [default: guardrails.toml]
+  -f, --format <FORMAT>     Output format [default: pretty]
+      --stdin               Read file content from stdin instead of disk
+      --filename <NAME>     Filename to use for glob matching when using --stdin
+      --changed-only        Only scan files changed relative to a base branch (requires git)
+      --base <REF>          Base ref for --changed-only [default: auto-detect or "main"]
+      --fix                 Apply fixes automatically
+      --dry-run             Preview fixes without applying (requires --fix)
+```
+
+### `baseline` options
+
+```
+guardrails baseline [OPTIONS] <PATHS>...
+
+  -c, --config <PATH>       Config file path [default: guardrails.toml]
+  -o, --output <PATH>       Output file [default: .guardrails-baseline.json]
+```
+
+### `init` options
+
+```
+guardrails init [OPTIONS]
+
+  -o, --output <PATH>       Output file [default: guardrails.toml]
+      --force               Overwrite existing config file
 ```
 
 ### Output Formats
@@ -384,13 +402,15 @@ Options:
 | `pretty` | `-f pretty` | Human-readable terminal output with colors, source context, and suggestions |
 | `compact` | `-f compact` | One line per violation, grep-friendly |
 | `json` | `-f json` | Machine-readable, for tooling integration |
-| `github-actions` | `-f github` | Native GitHub annotation format — violations appear inline on PR diffs |
+| `github` | `-f github` | GitHub Actions annotation format — violations appear inline on PR diffs |
+| `sarif` | `-f sarif` | SARIF v2.1.0 for GitHub Code Scanning |
+| `markdown` | `-f markdown` | Markdown tables for PR summaries and `$GITHUB_STEP_SUMMARY` |
 
 ### Exit Codes
 
 | Code | Meaning |
 |---|---|
-| `0` | No errors (warnings may be present unless `--strict`) |
+| `0` | No violations found |
 | `1` | Violations found |
 | `2` | Configuration or runtime error |
 
@@ -398,37 +418,49 @@ Options:
 
 ## CI Integration
 
-### GitHub Actions
+### GitHub Actions (recommended)
+
+Use the `AstroGuard/guardrails` action for the simplest setup. On pull requests it automatically scans only changed files; on pushes to main it scans everything.
 
 ```yaml
+name: Guardrails
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
 jobs:
   guardrails:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run guardrails
-        run: ./guardrails -f github-actions --strict
+        with:
+          fetch-depth: 0 # Full history needed for diff-aware scanning
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: AstroGuard/guardrails@main
+        with:
+          paths: 'src'
+          # changed-only defaults to "auto" (enabled on PRs, disabled on push)
+          # base: 'main'  # Override the base branch for diff comparison
 ```
 
-Violations appear as inline annotations directly on the PR diff:
-
-```
-::error file=src/utils/helpers.ts,line=1,title=no-moment::moment.js is deprecated — use date-fns
-::warning file=src/utils/helpers.ts,line=6,col=3,title=no-console-log::Remove console.log before committing
-```
+The action produces inline annotations on the PR diff (`--format github`) and writes a markdown summary to `$GITHUB_STEP_SUMMARY`.
 
 ### Generic CI
 
 ```yaml
 - name: Run guardrails
-  run: guardrails -f compact --strict
+  run: guardrails scan --format compact
 ```
 
 ### Pre-commit Hook
 
 ```bash
 #!/bin/sh
-guardrails --errors-only
+guardrails scan --changed-only --base HEAD
 ```
 
 ---
@@ -438,30 +470,37 @@ guardrails --errors-only
 ```
 src/
 ├── main.rs                         CLI entry point (clap)
-├── lib.rs                          Library root
+├── lib.rs                          Library root — re-exports public API
 ├── config.rs                       TOML configuration parsing
-├── scanner.rs                      File tree walker + rule orchestration
-├── report.rs                       Output rendering (pretty, JSON, GitHub Actions, compact)
+├── scan.rs                         File tree walker + rule orchestration
+├── git_diff.rs                     Git diff parsing for --changed-only
+├── mcp.rs                          MCP (Model Context Protocol) server
+├── init.rs                         Config scaffolding (guardrails init)
+├── presets.rs                      Built-in rule presets
+├── cli/
+│   ├── mod.rs                      CLI argument definitions (clap)
+│   ├── format.rs                   Output rendering (pretty, JSON, GitHub, SARIF, etc.)
+│   └── toml_config.rs              TOML config validation helpers
 └── rules/
     ├── mod.rs                      Rule trait, Violation type, rule registry
+    ├── factory.rs                  Rule construction from config
     ├── banned_import.rs            Import detection (JS/TS/Python/Rust)
     ├── banned_pattern.rs           Literal + regex pattern matching
     ├── required_pattern.rs         Ensure patterns exist in matching files
     ├── banned_dependency.rs        Manifest parsing (package.json, Cargo.toml, etc.)
     ├── file_presence.rs            Required/forbidden file checks
     ├── ratchet.rs                  Decreasing-count enforcement
+    ├── window_pattern.rs           Sliding-window pattern matching
     ├── tailwind_dark_mode.rs       Dark mode variant enforcement
     └── tailwind_theme_tokens.rs    shadcn semantic token enforcement
 
-tests/
-└── integration_tests.rs            15 integration tests covering all rule types
-
 examples/
-└── shadcn-project/                 Before/after example of Tailwind theme enforcement
-    ├── guardrails.toml
-    └── src/components/
-        ├── BadCard.tsx              28 violations — hardcoded colors
-        └── GoodCard.tsx             0 violations — semantic tokens
+├── guardrails.toml                 Sample project config
+├── guardrails.example.toml         Documented reference for all rule types
+├── github-ci.yml                   GitHub Actions workflow example
+├── claude-code-hooks.json          Claude Code hooks integration
+├── BadCard.tsx                     Anti-pattern example — hardcoded colors
+└── GoodCard.tsx                    Best-practice example — semantic tokens
 ```
 
 ### Extending with New Rules
@@ -491,7 +530,7 @@ To add a new rule:
 
 1. Create `src/rules/your_rule.rs` implementing the `Rule` trait.
 2. Add a variant to `RuleType` in `src/config.rs`.
-3. Register it in `build_rule()` in `src/rules/mod.rs`.
+3. Register it in `build_rule()` in `src/rules/factory.rs`.
 4. Add any new config fields to `RuleConfig` in `src/config.rs`.
 
 ---
@@ -552,8 +591,8 @@ You have 200 call sites using `oldApi.fetch()` and want to migrate to `newApi.re
 
 ```bash
 # Step 1: Find the current count
-$ guardrails count "oldApi.fetch(" --glob "src/**/*.ts"
-→ Total: 200 occurrences across 43 files
+$ guardrails baseline .
+# Writes .guardrails-baseline.json with counts per ratchet rule
 
 # Step 2: Set the ceiling in guardrails.toml
 ```
@@ -583,8 +622,6 @@ message = "Migrate to newApi.request()"
 ## Future Directions
 
 - **Tree-sitter integration** — AST-aware rules for scope-sensitive matching (e.g., "ban `any` in function parameters but not in type guards")
-- **Auto-fix** — not just detection, but automated rewrites
-- **Baseline files** — `guardrails baseline` to auto-generate ratchet counts into `.guardrails-baseline.json`
 - **WASM plugin system** — distribute custom rules as portable WASM modules
 - **Watch mode** — re-run on file changes during development
 - **Monorepo support** — per-package config inheritance with shared base rules
