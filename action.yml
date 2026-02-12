@@ -1,0 +1,42 @@
+name: 'Guardrails'
+description: 'Enforce architectural decisions AI coding tools keep ignoring'
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  config:
+    description: 'Path to guardrails.toml config file'
+    required: false
+    default: 'guardrails.toml'
+  paths:
+    description: 'Paths to scan (space-separated)'
+    required: false
+    default: '.'
+  fail-on-warning:
+    description: 'Fail the check if warnings are found'
+    required: false
+    default: 'false'
+  version:
+    description: 'Version of guardrails to install'
+    required: false
+    default: 'latest'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Guardrails
+      shell: bash
+      run: |
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          cargo install guardrails
+        else
+          cargo install guardrails@${{ inputs.version }}
+        fi
+
+    - name: Run Guardrails
+      shell: bash
+      run: |
+        guardrails scan ${{ inputs.paths }} \
+          --config ${{ inputs.config }} \
+          --format github

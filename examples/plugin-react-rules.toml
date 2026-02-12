@@ -1,0 +1,29 @@
+# Example plugin file: React best practices
+# Load via: plugins = ["examples/plugin-react-rules.toml"]
+
+[[rule]]
+id = "no-default-export"
+type = "banned-pattern"
+severity = "warning"
+glob = "src/components/**/*.tsx"
+pattern = "export default"
+message = "Prefer named exports over default exports for better refactoring support"
+suggest = "Use 'export function ComponentName' instead of 'export default'"
+
+[[rule]]
+id = "error-boundary-in-pages"
+type = "required-pattern"
+severity = "error"
+glob = "src/pages/**/*.tsx"
+pattern = "ErrorBoundary"
+message = "Page components must include an ErrorBoundary"
+suggest = "Wrap your page content with <ErrorBoundary>"
+
+[[rule]]
+id = "no-console-in-components"
+type = "banned-pattern"
+severity = "warning"
+glob = "src/components/**/*.{ts,tsx}"
+pattern = "console.log("
+message = "Remove console.log from production components"
+suggest = "Use a proper logging service or remove the debug statement"

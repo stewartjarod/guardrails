@@ -1,0 +1,7 @@
+- id: guardrails
+  name: Guardrails
+  description: Enforce architectural decisions AI coding tools keep ignoring
+  entry: guardrails scan
+  language: rust
+  types_or: [javascript, jsx, typescript, tsx, html, json]
+  args: ['--format', 'compact']

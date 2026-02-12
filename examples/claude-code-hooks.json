@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "command": "guardrails scan \"$CLAUDE_FILE_PATH\" --config guardrails.toml --format json",
+        "description": "Run Guardrails after file edits to catch violations immediately"
+      }
+    ]
+  }
+}
