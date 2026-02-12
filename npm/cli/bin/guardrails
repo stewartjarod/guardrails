@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-const { spawnSync } = require("child_process");
+const { spawnSync, execFileSync } = require("child_process");
+const { existsSync } = require("fs");
 const path = require("path");
 
 const PLATFORMS = {
@@ -33,23 +34,25 @@ function getBinaryPath() {
 
   const binaryName = process.platform === "win32" ? "guardrails.exe" : "guardrails";
 
-  try {
-    // Resolve from the package's node_modules, not the script's location
-    const pkgDir = path.resolve(__dirname, "..");
-    return require.resolve(path.join(pkg, binaryName), {
-      paths: [pkgDir, path.join(pkgDir, "node_modules"), ...require.resolve.paths(pkg) || []],
-    });
-  } catch {
-    console.error(
-      `Could not find the binary for ${pkg}.\n` +
-        `This usually means the optional dependency was not installed.\n\n` +
-        `Try reinstalling:\n` +
-        `  npm install -g code-guardrails\n\n` +
-        `Or install from source:\n` +
-        `  cargo install guardrails\n`
-    );
-    process.exit(1);
+  // Both packages live as siblings in the same node_modules directory
+  // __dirname = .../node_modules/code-guardrails/bin
+  // sibling   = .../node_modules/<platform-pkg>/guardrails
+  const nodeModulesDir = path.resolve(__dirname, "..", "..");
+  const binaryPath = path.join(nodeModulesDir, pkg, binaryName);
+
+  if (existsSync(binaryPath)) {
+    return binaryPath;
   }
+
+  console.error(
+    `Could not find the binary for ${pkg}.\n` +
+      `This usually means the optional dependency was not installed.\n\n` +
+      `Try reinstalling:\n` +
+      `  npm install -g code-guardrails\n\n` +
+      `Or install from source:\n` +
+      `  cargo install guardrails\n`
+  );
+  process.exit(1);
 }
 
 const binary = getBinaryPath();
