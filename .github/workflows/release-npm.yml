@@ -91,6 +91,9 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@latest
+
       - name: Download all platform artifacts
         uses: actions/download-artifact@v4
         with:
