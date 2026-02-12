@@ -3,8 +3,10 @@ use guardrails::cli::format;
 use guardrails::cli::{Cli, Commands, OutputFormat};
 use guardrails::config::Severity;
 use guardrails::init;
+use guardrails::mcp;
 use guardrails::scan;
 use std::fs;
+use std::io::Read;
 use std::process;
 
 fn main() {
@@ -15,32 +17,74 @@ fn main() {
             paths,
             config,
             format: output_format,
+            stdin,
+            filename,
+            fix,
+            dry_run,
         } => {
-            let result = match scan::run_scan(&config, &paths) {
-                Ok(r) => r,
-                Err(scan::ScanError::ConfigRead(ref e))
-                    if e.kind() == std::io::ErrorKind::NotFound =>
-                {
-                    eprintln!(
-                        "\x1b[31merror\x1b[0m: config file '{}' not found",
-                        config.display()
-                    );
-                    eprintln!(
-                        "\x1b[90mhint\x1b[0m: run \x1b[1mguardrails init\x1b[0m to generate a starter config"
-                    );
+            let result = if stdin {
+                // Read from stdin
+                let mut content = String::new();
+                std::io::stdin().read_to_string(&mut content).unwrap_or_else(|e| {
+                    eprintln!("\x1b[31merror\x1b[0m: failed to read stdin: {}", e);
                     process::exit(2);
+                });
+                let fname = filename.as_deref().unwrap_or("stdin.tsx");
+                match scan::run_scan_stdin(&config, &content, fname) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        eprintln!("\x1b[31merror\x1b[0m: {}", e);
+                        process::exit(2);
+                    }
                 }
-                Err(e) => {
-                    eprintln!("\x1b[31merror\x1b[0m: {}", e);
-                    process::exit(2);
+            } else {
+                match scan::run_scan(&config, &paths) {
+                    Ok(r) => r,
+                    Err(scan::ScanError::ConfigRead(ref e))
+                        if e.kind() == std::io::ErrorKind::NotFound =>
+                    {
+                        eprintln!(
+                            "\x1b[31merror\x1b[0m: config file '{}' not found",
+                            config.display()
+                        );
+                        eprintln!(
+                            "\x1b[90mhint\x1b[0m: run \x1b[1mguardrails init\x1b[0m to generate a starter config"
+                        );
+                        process::exit(2);
+                    }
+                    Err(e) => {
+                        eprintln!("\x1b[31merror\x1b[0m: {}", e);
+                        process::exit(2);
+                    }
                 }
             };
+
+            // Apply fixes if requested
+            if fix && !stdin {
+                let applied = format::apply_fixes(&result, dry_run);
+                if applied > 0 {
+                    if dry_run {
+                        eprintln!(
+                            "\x1b[36m(dry run)\x1b[0m {} fix{} would be applied",
+                            applied,
+                            if applied == 1 { "" } else { "es" }
+                        );
+                    } else {
+                        eprintln!(
+                            "\x1b[32m✓\x1b[0m Applied {} fix{}",
+                            applied,
+                            if applied == 1 { "" } else { "es" }
+                        );
+                    }
+                }
+            }
 
             match output_format {
                 OutputFormat::Pretty => format::print_pretty(&result),
                 OutputFormat::Json => format::print_json(&result),
                 OutputFormat::Compact => format::print_compact(&result),
                 OutputFormat::Github => format::print_github(&result),
+                OutputFormat::Sarif => format::print_sarif(&result),
             }
 
             let has_errors = result
@@ -86,6 +130,10 @@ fn main() {
                     if entry.count == 1 { "" } else { "s" }
                 );
             }
+        }
+
+        Commands::Mcp { config } => {
+            mcp::run_mcp_server(&config);
         }
 
         Commands::Init { output, force } => {
