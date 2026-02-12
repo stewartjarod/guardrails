@@ -2,9 +2,12 @@ use crate::config::RuleConfig;
 use crate::rules::banned_dependency::BannedDependencyRule;
 use crate::rules::banned_import::BannedImportRule;
 use crate::rules::banned_pattern::BannedPatternRule;
+use crate::rules::file_presence::FilePresenceRule;
 use crate::rules::ratchet::RatchetRule;
+use crate::rules::required_pattern::RequiredPatternRule;
 use crate::rules::tailwind_dark_mode::TailwindDarkModeRule;
 use crate::rules::tailwind_theme_tokens::TailwindThemeTokensRule;
+use crate::rules::window_pattern::WindowPatternRule;
 use crate::rules::{Rule, RuleBuildError};
 use std::fmt;
 
@@ -40,6 +43,9 @@ pub fn build_rule(rule_type: &str, config: &RuleConfig) -> Result<Box<dyn Rule>,
         "banned-pattern" => Ok(Box::new(BannedPatternRule::new(config)?)),
         "banned-import" => Ok(Box::new(BannedImportRule::new(config)?)),
         "banned-dependency" => Ok(Box::new(BannedDependencyRule::new(config)?)),
+        "required-pattern" => Ok(Box::new(RequiredPatternRule::new(config)?)),
+        "file-presence" => Ok(Box::new(FilePresenceRule::new(config)?)),
+        "window-pattern" => Ok(Box::new(WindowPatternRule::new(config)?)),
         _ => Err(FactoryError::UnknownRuleType(rule_type.to_string())),
     }
 }
