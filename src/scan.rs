@@ -1,4 +1,5 @@
 use crate::cli::toml_config::TomlConfig;
+use crate::presets::{self, PresetError};
 use crate::rules::factory::{self, FactoryError};
 use crate::rules::{Rule, ScanContext, Violation};
 use globset::{Glob, GlobSet, GlobSetBuilder};
@@ -15,6 +16,7 @@ pub enum ScanError {
     ConfigParse(toml::de::Error),
     GlobParse(globset::Error),
     RuleFactory(FactoryError),
+    Preset(PresetError),
 }
 
 impl fmt::Display for ScanError {
@@ -24,6 +26,7 @@ impl fmt::Display for ScanError {
             ScanError::ConfigParse(e) => write!(f, "failed to parse config: {}", e),
             ScanError::GlobParse(e) => write!(f, "invalid glob pattern: {}", e),
             ScanError::RuleFactory(e) => write!(f, "failed to build rule: {}", e),
+            ScanError::Preset(e) => write!(f, "preset error: {}", e),
         }
     }
 }
@@ -57,17 +60,24 @@ pub fn run_scan(config_path: &Path, target_paths: &[PathBuf]) -> Result<ScanResu
     let config_text = fs::read_to_string(config_path).map_err(ScanError::ConfigRead)?;
     let toml_config: TomlConfig = toml::from_str(&config_text).map_err(ScanError::ConfigParse)?;
 
-    // 2. Build exclude glob set
+    // 2. Resolve presets and merge with user-defined rules
+    let resolved_rules = presets::resolve_rules(
+        &toml_config.guardrails.extends,
+        &toml_config.rule,
+    )
+    .map_err(ScanError::Preset)?;
+
+    // 3. Build exclude glob set
     // Include patterns are advisory for project-wide scanning; CLI-provided targets
     // override them (the user explicitly chose what to scan). Exclude patterns still
     // apply to skip directories like node_modules.
     let exclude_set = build_glob_set(&toml_config.guardrails.exclude)?;
 
-    // 3. Build rules via factory, tracking ratchet metadata
+    // 4. Build rules via factory, tracking ratchet metadata
     let mut rules: Vec<(Box<dyn Rule>, Option<GlobSet>)> = Vec::new();
     let mut ratchet_thresholds: HashMap<String, usize> = HashMap::new();
 
-    for toml_rule in &toml_config.rule {
+    for toml_rule in &resolved_rules {
         let rule_config = toml_rule.to_rule_config();
         let rule = factory::build_rule(&toml_rule.rule_type, &rule_config)
             .map_err(ScanError::RuleFactory)?;
@@ -184,11 +194,18 @@ pub fn run_baseline(
     let config_text = fs::read_to_string(config_path).map_err(ScanError::ConfigRead)?;
     let toml_config: TomlConfig = toml::from_str(&config_text).map_err(ScanError::ConfigParse)?;
 
+    // Resolve presets and merge with user-defined rules
+    let resolved_rules = presets::resolve_rules(
+        &toml_config.guardrails.extends,
+        &toml_config.rule,
+    )
+    .map_err(ScanError::Preset)?;
+
     let exclude_set = build_glob_set(&toml_config.guardrails.exclude)?;
 
     // Build only ratchet rules
     let mut rules: Vec<(Box<dyn Rule>, Option<GlobSet>, String)> = Vec::new();
-    for toml_rule in &toml_config.rule {
+    for toml_rule in &resolved_rules {
         if toml_rule.rule_type != "ratchet" {
             continue;
         }

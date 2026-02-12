@@ -4,6 +4,11 @@
 [guardrails]
 name = "my-project"
 
+# Presets: load a curated set of rules in one line.
+# Available presets: "shadcn-strict", "shadcn-migrate", "ai-safety"
+# Any [[rule]] with the same id as a preset rule overrides it.
+# extends = ["shadcn-strict"]
+
 # Files to include in scanning (default: everything)
 include = ["src/**/*", "app/**/*", "components/**/*"]
 

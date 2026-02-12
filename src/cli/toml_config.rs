@@ -18,10 +18,12 @@ pub struct GuardrailsSection {
     pub include: Vec<String>,
     #[serde(default)]
     pub exclude: Vec<String>,
+    #[serde(default)]
+    pub extends: Vec<String>,
 }
 
 /// A single `[[rule]]` entry.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct TomlRule {
     pub id: String,
     #[serde(rename = "type")]
@@ -47,6 +49,26 @@ pub struct TomlRule {
 
 fn default_severity() -> String {
     "warning".into()
+}
+
+impl Default for TomlRule {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            rule_type: String::new(),
+            severity: default_severity(),
+            glob: None,
+            message: String::new(),
+            suggest: None,
+            allowed_classes: Vec::new(),
+            token_map: Vec::new(),
+            pattern: None,
+            max_count: None,
+            packages: Vec::new(),
+            regex: false,
+            manifest: None,
+        }
+    }
 }
 
 impl TomlRule {
