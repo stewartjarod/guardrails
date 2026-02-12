@@ -34,7 +34,11 @@ function getBinaryPath() {
   const binaryName = process.platform === "win32" ? "guardrails.exe" : "guardrails";
 
   try {
-    return require.resolve(path.join(pkg, binaryName));
+    // Resolve from the package's node_modules, not the script's location
+    const pkgDir = path.resolve(__dirname, "..");
+    return require.resolve(path.join(pkg, binaryName), {
+      paths: [pkgDir, path.join(pkgDir, "node_modules"), ...require.resolve.paths(pkg) || []],
+    });
   } catch {
     console.error(
       `Could not find the binary for ${pkg}.\n` +
