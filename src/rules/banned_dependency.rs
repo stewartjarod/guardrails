@@ -113,6 +113,7 @@ impl Rule for BannedDependencyRule {
                             source_line: line_num.and_then(|n| {
                                 ctx.content.lines().nth(n - 1).map(|l| l.to_string())
                             }),
+                            fix: None,
                         });
                     }
                 }

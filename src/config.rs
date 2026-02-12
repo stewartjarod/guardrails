@@ -27,6 +27,16 @@ pub struct RuleConfig {
     pub regex: bool,
     /// Manifest filename to check (used by banned-dependency, defaults to `package.json`).
     pub manifest: Option<String>,
+    /// Glob patterns for files to exclude from this rule.
+    pub exclude_glob: Vec<String>,
+    /// Only run rule if file contains this string.
+    pub file_contains: Option<String>,
+    /// Only run rule if file does NOT contain this string.
+    pub file_not_contains: Option<String>,
+    /// Required files that must exist (used by file-presence rule).
+    pub required_files: Vec<String>,
+    /// Condition pattern: only enforce required-pattern if this pattern is present.
+    pub condition_pattern: Option<String>,
 }
 
 impl Default for RuleConfig {
@@ -44,6 +54,11 @@ impl Default for RuleConfig {
             packages: Vec::new(),
             regex: false,
             manifest: None,
+            exclude_glob: Vec::new(),
+            file_contains: None,
+            file_not_contains: None,
+            required_files: Vec::new(),
+            condition_pattern: None,
         }
     }
 }

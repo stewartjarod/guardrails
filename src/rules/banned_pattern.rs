@@ -75,6 +75,7 @@ impl Rule for BannedPatternRule {
                         message: self.message.clone(),
                         suggest: self.suggest.clone(),
                         source_line: Some(line.to_string()),
+                        fix: None,
                     });
                 }
             } else {
@@ -93,6 +94,7 @@ impl Rule for BannedPatternRule {
                         message: self.message.clone(),
                         suggest: self.suggest.clone(),
                         source_line: Some(line.to_string()),
+                        fix: None,
                     });
                     search_start = col + pat_len;
                 }

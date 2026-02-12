@@ -286,6 +286,7 @@ impl Rule for TailwindDarkModeRule {
                         message: msg,
                         suggest,
                         source_line: Some(line.to_string()),
+                        fix: None,
                     });
                 }
             }

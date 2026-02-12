@@ -100,6 +100,7 @@ impl Rule for BannedImportRule {
                     message: format!("{}: '{}'", self.message, matched_pkg),
                     suggest: self.suggest.clone(),
                     source_line: Some(line.to_string()),
+                    fix: None,
                 });
             }
         }

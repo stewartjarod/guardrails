@@ -2,9 +2,12 @@ pub mod banned_dependency;
 pub mod banned_import;
 pub mod banned_pattern;
 pub mod factory;
+pub mod file_presence;
 pub mod ratchet;
+pub mod required_pattern;
 pub mod tailwind_dark_mode;
 pub mod tailwind_theme_tokens;
+pub mod window_pattern;
 
 use crate::config::Severity;
 use std::path::{Path, PathBuf};
@@ -30,6 +33,13 @@ pub struct ScanContext<'a> {
     pub content: &'a str,
 }
 
+/// Machine-actionable fix data for a violation.
+#[derive(Debug, Clone)]
+pub struct Fix {
+    pub old: String,
+    pub new: String,
+}
+
 /// A single violation emitted by a rule.
 #[derive(Debug, Clone)]
 pub struct Violation {
@@ -41,6 +51,7 @@ pub struct Violation {
     pub message: String,
     pub suggest: Option<String>,
     pub source_line: Option<String>,
+    pub fix: Option<Fix>,
 }
 
 /// Errors that can occur when constructing a rule from config.
