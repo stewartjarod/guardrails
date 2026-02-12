@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.3.2] - 2026-02-12
+
+### Bug Fixes
+- resolve platform binary from package's node_modules path (6608d07)
+
 ## [v0.3.1] - 2026-02-12
 
 ### Bug Fixes
