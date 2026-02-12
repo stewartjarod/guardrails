@@ -1,0 +1,38 @@
+[guardrails]
+name = "shadcn-themed-project"
+include = ["src/**/*"]
+exclude = ["**/node_modules/**", "**/dist/**"]
+
+# ──────────────────────────────────────────────
+# Tailwind Dark Mode Enforcement
+# Ensures every hardcoded color class has a dark: variant.
+# shadcn semantic tokens (bg-background, text-foreground, etc.)
+# are allowed by default since they handle theming via CSS vars.
+# ──────────────────────────────────────────────
+
+[[rule]]
+id = "enforce-dark-mode"
+type = "tailwind-dark-mode"
+severity = "error"
+glob = "**/*.{tsx,jsx}"
+message = "Missing dark: variant for color class"
+suggest = "Use a shadcn semantic token class or add an explicit dark: counterpart"
+# Classes that don't need dark: variants (beyond the built-in semantic tokens)
+allowed_classes = []
+
+# ──────────────────────────────────────────────
+# shadcn Theme Token Enforcement
+# Bans raw Tailwind color classes in favor of
+# CSS-variable-based semantic tokens from shadcn/ui.
+# ──────────────────────────────────────────────
+
+[[rule]]
+id = "use-theme-tokens"
+type = "tailwind-theme-tokens"
+severity = "warning"
+glob = "**/*.{tsx,jsx}"
+message = "Use shadcn semantic token instead of raw color"
+# Extend or override the default token mapping:
+# token_map = ["bg-brand-500=bg-primary", "text-brand-500=text-primary"]
+# Allow specific raw colors that are intentionally not themed:
+# allowed_classes = ["bg-red-500"]
