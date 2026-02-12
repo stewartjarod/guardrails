@@ -59,4 +59,6 @@ pub enum Commands {
 pub enum OutputFormat {
     Pretty,
     Json,
+    Compact,
+    Github,
 }

@@ -39,6 +39,8 @@ fn main() {
             match output_format {
                 OutputFormat::Pretty => format::print_pretty(&result),
                 OutputFormat::Json => format::print_json(&result),
+                OutputFormat::Compact => format::print_compact(&result),
+                OutputFormat::Github => format::print_github(&result),
             }
 
             let has_errors = result
