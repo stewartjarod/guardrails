@@ -1,4 +1,4 @@
-name: 'Guardrails'
+name: 'Code Guardrails'
 description: 'Enforce architectural decisions AI coding tools keep ignoring'
 branding:
   icon: 'shield'
