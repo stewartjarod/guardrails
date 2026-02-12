@@ -231,6 +231,10 @@ impl Rule for TailwindThemeTokensRule {
                         message: msg,
                         suggest: Some(format!("Replace '{}' with '{}'", full_match, replacement)),
                         source_line: Some(line.to_string()),
+                        fix: Some(crate::rules::Fix {
+                            old: full_match.to_string(),
+                            new: replacement.clone(),
+                        }),
                     });
                 }
             }

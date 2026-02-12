@@ -5,6 +5,7 @@ use serde_json::json;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::io::Write;
+use std::path::Path;
 
 /// Print violations grouped by file with ANSI colors.
 pub fn print_pretty(result: &ScanResult) {
@@ -122,6 +123,10 @@ pub fn print_json(result: &ScanResult) {
                 "message": v.message,
                 "suggest": v.suggest,
                 "source_line": v.source_line,
+                "fix": v.fix.as_ref().map(|f| json!({
+                    "old": f.old,
+                    "new": f.new,
+                })),
             })
         })
         .collect();
@@ -288,6 +293,176 @@ fn write_ratchet_stderr(
     }
 }
 
+/// Print violations in SARIF v2.1.0 format for GitHub Code Scanning.
+pub fn print_sarif(result: &ScanResult) {
+    // Collect unique rules
+    let mut rule_ids: Vec<String> = result
+        .violations
+        .iter()
+        .map(|v| v.rule_id.clone())
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .collect();
+    rule_ids.sort();
+
+    let rule_index: HashMap<&str, usize> = rule_ids
+        .iter()
+        .enumerate()
+        .map(|(i, id)| (id.as_str(), i))
+        .collect();
+
+    let rules: Vec<serde_json::Value> = rule_ids
+        .iter()
+        .map(|id| {
+            json!({
+                "id": id,
+                "shortDescription": { "text": id },
+            })
+        })
+        .collect();
+
+    let results: Vec<serde_json::Value> = result
+        .violations
+        .iter()
+        .map(|v| {
+            let level = match v.severity {
+                Severity::Error => "error",
+                Severity::Warning => "warning",
+            };
+
+            let location = json!({
+                "physicalLocation": {
+                    "artifactLocation": {
+                        "uri": v.file.display().to_string(),
+                    },
+                    "region": {
+                        "startLine": v.line.unwrap_or(1),
+                        "startColumn": v.column.unwrap_or(1),
+                    }
+                }
+            });
+
+            let mut result_obj = json!({
+                "ruleId": v.rule_id,
+                "ruleIndex": rule_index.get(v.rule_id.as_str()).unwrap_or(&0),
+                "level": level,
+                "message": { "text": v.message },
+                "locations": [location],
+            });
+
+            // Add fix if available
+            if let Some(ref fix) = v.fix {
+                result_obj["fixes"] = json!([{
+                    "description": { "text": v.suggest.as_deref().unwrap_or("Apply fix") },
+                    "artifactChanges": [{
+                        "artifactLocation": {
+                            "uri": v.file.display().to_string(),
+                        },
+                        "replacements": [{
+                            "deletedRegion": {
+                                "startLine": v.line.unwrap_or(1),
+                                "startColumn": v.column.unwrap_or(1),
+                            },
+                            "insertedContent": { "text": &fix.new }
+                        }]
+                    }]
+                }]);
+            }
+
+            result_obj
+        })
+        .collect();
+
+    let sarif = json!({
+        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "guardrails",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "informationUri": "https://github.com/AstroGuard/guardrails",
+                    "rules": rules,
+                }
+            },
+            "results": results,
+        }]
+    });
+
+    println!("{}", serde_json::to_string_pretty(&sarif).unwrap());
+}
+
+/// Apply fixes from violations to source files. Returns the number of fixes applied.
+/// Fixes are targeted to the specific line where the violation occurred to avoid
+/// accidentally replacing a different occurrence of the same pattern.
+pub fn apply_fixes(result: &ScanResult, dry_run: bool) -> usize {
+    // Group fixable violations by file, keeping line info for targeted replacement
+    let mut fixes_by_file: BTreeMap<String, Vec<(Option<usize>, &str, &str)>> = BTreeMap::new();
+
+    for v in &result.violations {
+        if let Some(ref fix) = v.fix {
+            fixes_by_file
+                .entry(v.file.display().to_string())
+                .or_default()
+                .push((v.line, &fix.old, &fix.new));
+        }
+    }
+
+    let mut total_applied = 0;
+
+    for (file_path, fixes) in &fixes_by_file {
+        let path = Path::new(file_path);
+        let content = match std::fs::read_to_string(path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        let mut lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
+        // Preserve trailing newline if present
+        let trailing_newline = content.ends_with('\n');
+        let mut applied = 0;
+
+        for (line_num, old, new) in fixes {
+            if let Some(ln) = line_num {
+                // Line-targeted: only replace within the specific line (1-indexed)
+                if *ln > 0 && *ln <= lines.len() {
+                    let line = &lines[*ln - 1];
+                    if line.contains(*old) {
+                        lines[*ln - 1] = line.replacen(*old, *new, 1);
+                        applied += 1;
+                    }
+                }
+            } else {
+                // No line info — fall back to first-occurrence replacement
+                let joined = lines.join("\n");
+                if joined.contains(*old) {
+                    let modified = joined.replacen(*old, *new, 1);
+                    lines = modified.lines().map(|l| l.to_string()).collect();
+                    applied += 1;
+                }
+            }
+        }
+
+        if applied > 0 && !dry_run {
+            let mut modified = lines.join("\n");
+            if trailing_newline {
+                modified.push('\n');
+            }
+            if let Err(e) = std::fs::write(path, &modified) {
+                eprintln!(
+                    "\x1b[31merror\x1b[0m: failed to write {}: {}",
+                    file_path, e
+                );
+                continue;
+            }
+        }
+
+        total_applied += applied;
+    }
+
+    total_applied
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -320,6 +495,7 @@ mod tests {
             message: message.to_string(),
             suggest: None,
             source_line: None,
+            fix: None,
         }
     }
 
@@ -422,6 +598,7 @@ mod tests {
             message: "msg".to_string(),
             suggest: None,
             source_line: None,
+            fix: None,
         };
         let result = make_result(vec![v]);
         let mut out = Vec::new();
