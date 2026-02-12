@@ -13,6 +13,9 @@
   "cpu": [
     "x64"
   ],
+  "bin": {
+    "guardrails": "guardrails.exe"
+  },
   "files": [
     "guardrails.exe"
   ]

@@ -13,6 +13,9 @@
   "cpu": [
     "arm64"
   ],
+  "bin": {
+    "guardrails": "guardrails"
+  },
   "files": [
     "guardrails"
   ]

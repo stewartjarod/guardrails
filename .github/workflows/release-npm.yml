@@ -60,6 +60,7 @@ jobs:
         shell: bash
         run: |
           cp target/${{ matrix.target }}/release/${{ matrix.binary }} npm/${{ matrix.npm-dir }}/${{ matrix.binary }}
+          chmod +x npm/${{ matrix.npm-dir }}/${{ matrix.binary }}
 
       - name: Upload binary as release asset
         shell: bash
