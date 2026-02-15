@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.4.0] - 2026-02-14
+
+### Features
+- add security, nextjs, and ai-codegen presets (03dfedf)
+- add forbidden_files support to file-presence rule (32da08c)
+
+### Other
+- add npm install instructions to README (dcb25f9)
+
 ## [v0.3.5] - 2026-02-12
 
 ### Bug Fixes
