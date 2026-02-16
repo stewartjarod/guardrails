@@ -59,14 +59,14 @@ pub struct ScanResult {
     pub base_ref: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, serde::Deserialize)]
 pub struct BaselineEntry {
     pub rule_id: String,
     pub pattern: String,
     pub count: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, serde::Deserialize)]
 pub struct BaselineResult {
     pub entries: Vec<BaselineEntry>,
     pub files_scanned: usize,
@@ -623,7 +623,7 @@ fn is_suppressed(lines: &[&str], line_num: usize, allow_marker: &str, allow_next
     false
 }
 
-fn collect_files(target_paths: &[PathBuf], exclude_set: &GlobSet) -> Vec<PathBuf> {
+pub(crate) fn collect_files(target_paths: &[PathBuf], exclude_set: &GlobSet) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = Vec::new();
     for target in target_paths {
         if target.is_file() {
@@ -702,7 +702,7 @@ fn expand_glob(pattern: &str) -> Vec<String> {
 }
 
 /// Build a GlobSet from a single pattern string, expanding brace syntax.
-fn build_glob_set_from_pattern(pattern: &str) -> Result<GlobSet, ScanError> {
+pub(crate) fn build_glob_set_from_pattern(pattern: &str) -> Result<GlobSet, ScanError> {
     let expanded = expand_glob(pattern);
     let mut builder = GlobSetBuilder::new();
     for pat in &expanded {
@@ -711,7 +711,7 @@ fn build_glob_set_from_pattern(pattern: &str) -> Result<GlobSet, ScanError> {
     builder.build().map_err(ScanError::GlobParse)
 }
 
-fn build_glob_set(patterns: &[String]) -> Result<GlobSet, ScanError> {
+pub(crate) fn build_glob_set(patterns: &[String]) -> Result<GlobSet, ScanError> {
     let mut builder = GlobSetBuilder::new();
     for pattern in patterns {
         for pat in &expand_glob(pattern) {

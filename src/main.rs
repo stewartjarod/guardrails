@@ -5,6 +5,7 @@ use guardrails::config::Severity;
 use guardrails::git_diff;
 use guardrails::init;
 use guardrails::mcp;
+use guardrails::ratchet;
 use guardrails::scan;
 use std::fs;
 use std::io::Read;
@@ -166,6 +167,13 @@ fn main() {
 
         Commands::Mcp { config } => {
             mcp::run_mcp_server(&config);
+        }
+
+        Commands::Ratchet { command } => {
+            if let Err(e) = ratchet::run(command) {
+                eprintln!("\x1b[31merror\x1b[0m: {}", e);
+                process::exit(2);
+            }
         }
 
         Commands::Init { output, force } => {

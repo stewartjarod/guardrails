@@ -84,6 +84,69 @@ pub enum Commands {
         #[arg(long)]
         force: bool,
     },
+
+    /// Manage ratchet rules (add, tighten, import from baseline)
+    Ratchet {
+        #[command(subcommand)]
+        command: RatchetCommands,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum RatchetCommands {
+    /// Add a new ratchet rule, auto-counting current occurrences
+    Add {
+        /// Pattern to match (literal string or regex with --regex)
+        pattern: String,
+
+        /// Rule ID (default: slugified pattern)
+        #[arg(long)]
+        id: Option<String>,
+
+        /// File glob filter
+        #[arg(long, default_value = "**/*")]
+        glob: String,
+
+        /// Treat pattern as regex
+        #[arg(long)]
+        regex: bool,
+
+        /// Custom message
+        #[arg(long)]
+        message: Option<String>,
+
+        /// Path to guardrails.toml config file
+        #[arg(short, long, default_value = "guardrails.toml")]
+        config: PathBuf,
+
+        /// Paths to scan (files or directories)
+        #[arg(default_value = ".")]
+        paths: Vec<PathBuf>,
+    },
+
+    /// Re-count and lower max_count for an existing ratchet rule
+    Down {
+        /// Rule ID of the ratchet rule to tighten
+        rule_id: String,
+
+        /// Path to guardrails.toml config file
+        #[arg(short, long, default_value = "guardrails.toml")]
+        config: PathBuf,
+
+        /// Paths to scan (files or directories)
+        #[arg(default_value = ".")]
+        paths: Vec<PathBuf>,
+    },
+
+    /// Create ratchet rules from a baseline JSON file
+    From {
+        /// Path to the baseline JSON file (output of `guardrails baseline`)
+        baseline: PathBuf,
+
+        /// Path to guardrails.toml config file
+        #[arg(short, long, default_value = "guardrails.toml")]
+        config: PathBuf,
+    },
 }
 
 #[derive(Clone, ValueEnum)]
