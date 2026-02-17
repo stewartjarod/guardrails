@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/baseline-logo.png" alt="Baseline logo" width="300" />
+  <img src="assets/baseline.png" alt="Baseline logo" width="300" />
 </p>
 
 # baseline

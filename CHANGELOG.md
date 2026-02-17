@@ -1,5 +1,16 @@
 # Changelog
 
+## [v1.0.1] - 2026-02-17
+
+### Other
+- update brand assets and logo
+- add v1.0.0 changelog entry
+
+## [v1.0.0] - 2026-02-17
+
+### Breaking Changes
+- rebrand guardrails to baseline (crate: code-baseline) (85cdad8)
+
 ## [v0.5.0] - 2026-02-16
 
 ### Features
