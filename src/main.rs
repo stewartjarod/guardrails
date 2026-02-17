@@ -1,12 +1,12 @@
 use clap::Parser;
-use guardrails::cli::format;
-use guardrails::cli::{Cli, Commands, OutputFormat};
-use guardrails::config::Severity;
-use guardrails::git_diff;
-use guardrails::init;
-use guardrails::mcp;
-use guardrails::ratchet;
-use guardrails::scan;
+use code_baseline::cli::format;
+use code_baseline::cli::{Cli, Commands, OutputFormat};
+use code_baseline::config::Severity;
+use code_baseline::git_diff;
+use code_baseline::init;
+use code_baseline::mcp;
+use code_baseline::ratchet;
+use code_baseline::scan;
 use std::fs;
 use std::io::Read;
 use std::process;
@@ -60,7 +60,7 @@ fn main() {
                             config.display()
                         );
                         eprintln!(
-                            "\x1b[90mhint\x1b[0m: run \x1b[1mguardrails init\x1b[0m to generate a starter config"
+                            "\x1b[90mhint\x1b[0m: run \x1b[1mbaseline init\x1b[0m to generate a starter config"
                         );
                         process::exit(2);
                     }
@@ -80,7 +80,7 @@ fn main() {
                             config.display()
                         );
                         eprintln!(
-                            "\x1b[90mhint\x1b[0m: run \x1b[1mguardrails init\x1b[0m to generate a starter config"
+                            "\x1b[90mhint\x1b[0m: run \x1b[1mbaseline init\x1b[0m to generate a starter config"
                         );
                         process::exit(2);
                     }
@@ -207,7 +207,7 @@ fn main() {
                 type_label
             );
             eprintln!(
-                "\x1b[90mhint\x1b[0m: run \x1b[1mguardrails scan .\x1b[0m to find violations"
+                "\x1b[90mhint\x1b[0m: run \x1b[1mbaseline scan .\x1b[0m to find violations"
             );
         }
     }

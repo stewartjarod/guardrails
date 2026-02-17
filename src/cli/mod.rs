@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "guardrails", about = "Enforce architectural decisions AI coding tools keep ignoring")]
+#[command(name = "baseline", about = "Enforce architectural decisions AI coding tools keep ignoring")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -19,8 +19,8 @@ pub enum Commands {
         #[arg(required_unless_present = "stdin")]
         paths: Vec<PathBuf>,
 
-        /// Path to guardrails.toml config file
-        #[arg(short, long, default_value = "guardrails.toml")]
+        /// Path to baseline.toml config file
+        #[arg(short, long, default_value = "baseline.toml")]
         config: PathBuf,
 
         /// Output format
@@ -58,26 +58,26 @@ pub enum Commands {
         #[arg(required = true)]
         paths: Vec<PathBuf>,
 
-        /// Path to guardrails.toml config file
-        #[arg(short, long, default_value = "guardrails.toml")]
+        /// Path to baseline.toml config file
+        #[arg(short, long, default_value = "baseline.toml")]
         config: PathBuf,
 
         /// Output file path for the baseline JSON
-        #[arg(short, long, default_value = ".guardrails-baseline.json")]
+        #[arg(short, long, default_value = ".baseline-snapshot.json")]
         output: PathBuf,
     },
 
     /// Run as an MCP (Model Context Protocol) server over stdio
     Mcp {
-        /// Path to guardrails.toml config file
-        #[arg(short, long, default_value = "guardrails.toml")]
+        /// Path to baseline.toml config file
+        #[arg(short, long, default_value = "baseline.toml")]
         config: PathBuf,
     },
 
-    /// Generate a starter guardrails.toml for your project
+    /// Generate a starter baseline.toml for your project
     Init {
         /// Output file path for the generated config
-        #[arg(short, long, default_value = "guardrails.toml")]
+        #[arg(short, long, default_value = "baseline.toml")]
         output: PathBuf,
 
         /// Overwrite existing config file
@@ -115,8 +115,8 @@ pub enum RatchetCommands {
         #[arg(long)]
         message: Option<String>,
 
-        /// Path to guardrails.toml config file
-        #[arg(short, long, default_value = "guardrails.toml")]
+        /// Path to baseline.toml config file
+        #[arg(short, long, default_value = "baseline.toml")]
         config: PathBuf,
 
         /// Paths to scan (files or directories)
@@ -129,8 +129,8 @@ pub enum RatchetCommands {
         /// Rule ID of the ratchet rule to tighten
         rule_id: String,
 
-        /// Path to guardrails.toml config file
-        #[arg(short, long, default_value = "guardrails.toml")]
+        /// Path to baseline.toml config file
+        #[arg(short, long, default_value = "baseline.toml")]
         config: PathBuf,
 
         /// Paths to scan (files or directories)
@@ -140,11 +140,11 @@ pub enum RatchetCommands {
 
     /// Create ratchet rules from a baseline JSON file
     From {
-        /// Path to the baseline JSON file (output of `guardrails baseline`)
+        /// Path to the baseline JSON file (output of `baseline snapshot`)
         baseline: PathBuf,
 
-        /// Path to guardrails.toml config file
-        #[arg(short, long, default_value = "guardrails.toml")]
+        /// Path to baseline.toml config file
+        #[arg(short, long, default_value = "baseline.toml")]
         config: PathBuf,
     },
 }

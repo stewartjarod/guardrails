@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/guardrails-logo.png" alt="Guardrails logo" width="300" />
+  <img src="assets/baseline-logo.png" alt="Baseline logo" width="300" />
 </p>
 
-# guardrails
+# baseline
 
 Stop AI from undoing your team's decisions.
 
@@ -19,16 +19,16 @@ Cursor, Copilot, and Claude generate code from training data — not from your t
 - **"Our shadcn components support dark mode — except the ones AI wrote."** AI doesn't understand your design system. It reaches for `bg-white` and `text-gray-900` because that's what it learned from public repos.
 - **"We banned the request package, but Copilot just added it to package.json."** Dependency-level decisions live in your team's memory. AI has no access to that context.
 
-Linters catch syntax. Formatters fix whitespace. **guardrails** enforces the decisions your team has already made — especially the ones AI keeps ignoring.
+Linters catch syntax. Formatters fix whitespace. **baseline** enforces the decisions your team has already made — especially the ones AI keeps ignoring.
 
 ## Why not ESLint?
 
-ESLint is great at what it does. guardrails handles what it can't:
+ESLint is great at what it does. baseline handles what it can't:
 
-- **Ratcheting.** ESLint is pass/fail. guardrails counts occurrences across your codebase and enforces a ceiling that only goes down. You can migrate 200 legacy calls to 0 at your own pace — and CI prevents regressions at every step.
-- **Dependency bans.** ESLint checks source files. guardrails parses `package.json`, `Cargo.toml`, `requirements.txt`, and `go.mod` to catch banned packages before they ship — even if no source file imports them yet.
+- **Ratcheting.** ESLint is pass/fail. baseline counts occurrences across your codebase and enforces a ceiling that only goes down. You can migrate 200 legacy calls to 0 at your own pace — and CI prevents regressions at every step.
+- **Dependency bans.** ESLint checks source files. baseline parses `package.json`, `Cargo.toml`, `requirements.txt`, and `go.mod` to catch banned packages before they ship — even if no source file imports them yet.
 - **File presence rules.** Enforce that `README.md`, `LICENSE`, and CI configs exist. Forbid `.env` files from being committed. ESLint has no concept of project-level structure.
-- **Cross-file counting.** guardrails aggregates pattern matches across your entire codebase. "There should be fewer than 50 uses of legacyFetch" is a one-liner in `guardrails.toml` and impossible in ESLint without a custom plugin.
+- **Cross-file counting.** baseline aggregates pattern matches across your entire codebase. "There should be fewer than 50 uses of legacyFetch" is a one-liner in `baseline.toml` and impossible in ESLint without a custom plugin.
 - **Zero config for Tailwind/shadcn.** Built-in rules enforce dark mode variants and semantic token usage with 130+ default mappings. No plugins, no parser setup, no dependencies.
 - **Speed.** Written in Rust. Single binary. No Node.js runtime. Scans a large codebase in milliseconds.
 
@@ -36,29 +36,29 @@ ESLint is great at what it does. guardrails handles what it can't:
 
 ```bash
 # Run instantly via npm (no install needed)
-npx code-guardrails scan
+npx code-baseline scan
 
 # Or install globally
-npm install -g code-guardrails
+npm install -g code-baseline
 
 # Or via Cargo
-cargo install guardrails
+cargo install code-baseline
 ```
 
 ```bash
 # Initialize a config in your project
-guardrails init
+baseline init
 
-# Edit guardrails.toml to fit your project...
+# Edit baseline.toml to fit your project...
 
 # Scan your project
-guardrails scan
+baseline scan
 
 # Only scan files changed since main
-guardrails scan --changed-only
+baseline scan --changed-only
 
 # Generate a ratchet baseline
-guardrails baseline .
+baseline baseline .
 ```
 
 ## Example Output
@@ -85,12 +85,12 @@ src/components/BadCard.tsx
 
 ## Configuration
 
-Everything lives in a single `guardrails.toml` at the root of your project.
+Everything lives in a single `baseline.toml` at the root of your project.
 
 ### Global Settings
 
 ```toml
-[guardrails]
+[baseline]
 name = "my-project"
 include = ["src/**/*", "lib/**/*", "app/**/*"]
 exclude = [
@@ -238,8 +238,8 @@ suggest = "import { apiFetch } from '@company/http'"
 Use the `baseline` command to find your current counts:
 
 ```bash
-$ guardrails baseline .
-# Writes .guardrails-baseline.json with counts for all ratchet rules
+$ baseline baseline .
+# Writes .baseline-snapshot.json with counts for all ratchet rules
 ```
 
 The workflow: set `max_count = 47` today. Next sprint, migrate a few call sites, set `max_count = 40`. The number only goes down. Any PR that adds new legacy calls fails CI.
@@ -361,21 +361,21 @@ allowed_classes = ["bg-green-500", "text-red-600"]
 ## CLI Reference
 
 ```
-guardrails <COMMAND>
+baseline <COMMAND>
 
 Commands:
   scan        Scan files for rule violations (primary command)
   baseline    Count ratchet pattern occurrences and write a baseline JSON file
-  init        Generate a starter guardrails.toml for your project
+  init        Generate a starter baseline.toml for your project
   mcp         Run as an MCP (Model Context Protocol) server over stdio
 ```
 
 ### `scan` options
 
 ```
-guardrails scan [OPTIONS] [PATHS]...
+baseline scan [OPTIONS] [PATHS]...
 
-  -c, --config <PATH>       Config file path [default: guardrails.toml]
+  -c, --config <PATH>       Config file path [default: baseline.toml]
   -f, --format <FORMAT>     Output format [default: pretty]
       --stdin               Read file content from stdin instead of disk
       --filename <NAME>     Filename to use for glob matching when using --stdin
@@ -388,18 +388,18 @@ guardrails scan [OPTIONS] [PATHS]...
 ### `baseline` options
 
 ```
-guardrails baseline [OPTIONS] <PATHS>...
+baseline baseline [OPTIONS] <PATHS>...
 
-  -c, --config <PATH>       Config file path [default: guardrails.toml]
-  -o, --output <PATH>       Output file [default: .guardrails-baseline.json]
+  -c, --config <PATH>       Config file path [default: baseline.toml]
+  -o, --output <PATH>       Output file [default: .baseline-snapshot.json]
 ```
 
 ### `init` options
 
 ```
-guardrails init [OPTIONS]
+baseline init [OPTIONS]
 
-  -o, --output <PATH>       Output file [default: guardrails.toml]
+  -o, --output <PATH>       Output file [default: baseline.toml]
       --force               Overwrite existing config file
 ```
 
@@ -428,10 +428,10 @@ guardrails init [OPTIONS]
 
 ### GitHub Actions (recommended)
 
-Use the `AstroGuard/guardrails` action for the simplest setup. On pull requests it automatically scans only changed files; on pushes to main it scans everything.
+Use the `stewartjarod/baseline` action for the simplest setup. On pull requests it automatically scans only changed files; on pushes to main it scans everything.
 
 ```yaml
-name: Guardrails
+name: Baseline
 
 on:
   pull_request:
@@ -439,7 +439,7 @@ on:
     branches: [main]
 
 jobs:
-  guardrails:
+  baseline:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -448,7 +448,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: AstroGuard/guardrails@main
+      - uses: stewartjarod/baseline@main
         with:
           paths: 'src'
           # changed-only defaults to "auto" (enabled on PRs, disabled on push)
@@ -460,15 +460,15 @@ The action produces inline annotations on the PR diff (`--format github`) and wr
 ### Generic CI
 
 ```yaml
-- name: Run guardrails
-  run: guardrails scan --format compact
+- name: Run baseline
+  run: baseline scan --format compact
 ```
 
 ### Pre-commit Hook
 
 ```bash
 #!/bin/sh
-guardrails scan --changed-only --base HEAD
+baseline scan --changed-only --base HEAD
 ```
 
 ---
@@ -483,7 +483,7 @@ src/
 ├── scan.rs                         File tree walker + rule orchestration
 ├── git_diff.rs                     Git diff parsing for --changed-only
 ├── mcp.rs                          MCP (Model Context Protocol) server
-├── init.rs                         Config scaffolding (guardrails init)
+├── init.rs                         Config scaffolding (baseline init)
 ├── presets.rs                      Built-in rule presets
 ├── cli/
 │   ├── mod.rs                      CLI argument definitions (clap)
@@ -503,8 +503,8 @@ src/
     └── tailwind_theme_tokens.rs    shadcn semantic token enforcement
 
 examples/
-├── guardrails.toml                 Sample project config
-├── guardrails.example.toml         Documented reference for all rule types
+├── baseline.toml                   Sample project config
+├── baseline.example.toml           Documented reference for all rule types
 ├── github-ci.yml                   GitHub Actions workflow example
 ├── claude-code-hooks.json          Claude Code hooks integration
 ├── BadCard.tsx                     Anti-pattern example — hardcoded colors
@@ -547,7 +547,7 @@ To add a new rule:
 
 ### AI keeps importing moment.js — make it stop
 
-AI coding assistants pull from training data that includes deprecated packages. guardrails catches these before they land:
+AI coding assistants pull from training data that includes deprecated packages. baseline catches these before they land:
 
 ```toml
 [[rule]]
@@ -599,10 +599,10 @@ You have 200 call sites using `oldApi.fetch()` and want to migrate to `newApi.re
 
 ```bash
 # Step 1: Find the current count
-$ guardrails baseline .
-# Writes .guardrails-baseline.json with counts per ratchet rule
+$ baseline baseline .
+# Writes .baseline-snapshot.json with counts per ratchet rule
 
-# Step 2: Set the ceiling in guardrails.toml
+# Step 2: Set the ceiling in baseline.toml
 ```
 
 ```toml

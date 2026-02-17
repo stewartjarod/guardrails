@@ -16,23 +16,23 @@ jobs:
           - target: aarch64-apple-darwin
             os: macos-latest
             npm-dir: cli-darwin-arm64
-            binary: guardrails
+            binary: baseline
           - target: x86_64-apple-darwin
             os: macos-latest
             npm-dir: cli-darwin-x64
-            binary: guardrails
+            binary: baseline
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             npm-dir: cli-linux-x64
-            binary: guardrails
+            binary: baseline
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             npm-dir: cli-linux-arm64
-            binary: guardrails
+            binary: baseline
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             npm-dir: cli-win32-x64
-            binary: guardrails.exe
+            binary: baseline.exe
 
     runs-on: ${{ matrix.os }}
 
@@ -67,7 +67,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ASSET_NAME="guardrails-${{ matrix.target }}"
+          ASSET_NAME="baseline-${{ matrix.target }}"
           if [[ "${{ matrix.binary }}" == *.exe ]]; then
             ASSET_NAME="${ASSET_NAME}.exe"
           fi
@@ -116,7 +116,7 @@ jobs:
       - name: Publish platform packages
         run: |
           for dir in cli-darwin-arm64 cli-darwin-x64 cli-linux-x64 cli-linux-arm64 cli-win32-x64; do
-            echo "Publishing code-guardrails-${dir}..."
+            echo "Publishing code-baseline-${dir}..."
             npm publish ./npm/${dir} --access public --provenance
           done
 

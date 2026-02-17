@@ -86,9 +86,9 @@ struct RuleWithConditioning {
     rule: Box<dyn Rule>,
     file_contains: Option<String>,
     file_not_contains: Option<String>,
-    /// Pre-computed `"guardrails:allow-{rule_id}"` string.
+    /// Pre-computed `"baseline:allow-{rule_id}"` string.
     allow_marker: String,
-    /// Pre-computed `"guardrails:allow-next-line {rule_id}"` string.
+    /// Pre-computed `"baseline:allow-next-line {rule_id}"` string.
     allow_next_line: String,
 }
 
@@ -182,8 +182,8 @@ fn build_rules(resolved_rules: &[TomlRule]) -> Result<BuiltRules, ScanError> {
                     rule: ir.rule,
                     file_contains: ir.file_contains,
                     file_not_contains: ir.file_not_contains,
-                    allow_marker: format!("guardrails:allow-{}", id),
-                    allow_next_line: format!("guardrails:allow-next-line {}", id),
+                    allow_marker: format!("baseline:allow-{}", id),
+                    allow_next_line: format!("baseline:allow-next-line {}", id),
                 }
             })
             .collect();
@@ -298,7 +298,7 @@ pub fn run_scan(config_path: &Path, target_paths: &[PathBuf]) -> Result<ScanResu
 
     // 2. Load plugin rules from external TOML files
     let mut plugin_rules: Vec<crate::cli::toml_config::TomlRule> = Vec::new();
-    for plugin_path in &toml_config.guardrails.plugins {
+    for plugin_path in &toml_config.baseline.plugins {
         let plugin_text = fs::read_to_string(plugin_path).map_err(ScanError::ConfigRead)?;
         let plugin_config: PluginConfig =
             toml::from_str(&plugin_text).map_err(ScanError::ConfigParse)?;
@@ -310,13 +310,13 @@ pub fn run_scan(config_path: &Path, target_paths: &[PathBuf]) -> Result<ScanResu
     all_user_rules.extend(plugin_rules);
 
     let resolved_rules = presets::resolve_rules(
-        &toml_config.guardrails.extends,
+        &toml_config.baseline.extends,
         &all_user_rules,
     )
     .map_err(ScanError::Preset)?;
 
     // 4. Build exclude glob set
-    let exclude_set = build_glob_set(&toml_config.guardrails.exclude)?;
+    let exclude_set = build_glob_set(&toml_config.baseline.exclude)?;
 
     // 5. Build rules via factory
     let built = build_rules(&resolved_rules)?;
@@ -428,7 +428,7 @@ pub fn run_scan_stdin(
     let toml_config: TomlConfig = toml::from_str(&config_text).map_err(ScanError::ConfigParse)?;
 
     let resolved_rules = presets::resolve_rules(
-        &toml_config.guardrails.extends,
+        &toml_config.baseline.extends,
         &toml_config.rule,
     )
     .map_err(ScanError::Preset)?;
@@ -507,12 +507,12 @@ pub fn run_baseline(
 
     // Resolve presets and merge with user-defined rules
     let resolved_rules = presets::resolve_rules(
-        &toml_config.guardrails.extends,
+        &toml_config.baseline.extends,
         &toml_config.rule,
     )
     .map_err(ScanError::Preset)?;
 
-    let exclude_set = build_glob_set(&toml_config.guardrails.exclude)?;
+    let exclude_set = build_glob_set(&toml_config.baseline.exclude)?;
 
     // Build only ratchet rules
     let mut rules: Vec<(Box<dyn Rule>, Option<GlobSet>, String)> = Vec::new();
@@ -600,7 +600,7 @@ pub fn run_baseline(
 /// Check if a violation is suppressed by an escape-hatch comment.
 /// Uses pre-computed marker strings to avoid per-call allocations.
 fn is_suppressed(lines: &[&str], line_num: usize, allow_marker: &str, allow_next_line: &str) -> bool {
-    let allow_all = "guardrails:allow-all";
+    let allow_all = "baseline:allow-all";
 
     // Check current line (1-indexed)
     if line_num > 0 && line_num <= lines.len() {
@@ -610,11 +610,11 @@ fn is_suppressed(lines: &[&str], line_num: usize, allow_marker: &str, allow_next
         }
     }
 
-    // Check previous line (next-line style: `// guardrails:allow-next-line`)
+    // Check previous line (next-line style: `// baseline:allow-next-line`)
     if line_num >= 2 && line_num <= lines.len() {
         let prev = lines[line_num - 2];
         if prev.contains(allow_next_line)
-            || prev.contains("guardrails:allow-next-line all")
+            || prev.contains("baseline:allow-next-line all")
         {
             return true;
         }
@@ -834,73 +834,73 @@ mod tests {
     #[test]
     fn suppressed_by_same_line_allow() {
         let lines = vec![
-            "let x = style={{ color: 'red' }}; // guardrails:allow-no-inline-styles",
+            "let x = style={{ color: 'red' }}; // baseline:allow-no-inline-styles",
         ];
         assert!(is_suppressed(
             &lines,
             1,
-            "guardrails:allow-no-inline-styles",
-            "guardrails:allow-next-line no-inline-styles",
+            "baseline:allow-no-inline-styles",
+            "baseline:allow-next-line no-inline-styles",
         ));
     }
 
     #[test]
     fn suppressed_by_allow_all() {
         let lines = vec![
-            "let x = style={{ color: 'red' }}; // guardrails:allow-all",
+            "let x = style={{ color: 'red' }}; // baseline:allow-all",
         ];
         assert!(is_suppressed(
             &lines,
             1,
-            "guardrails:allow-no-inline-styles",
-            "guardrails:allow-next-line no-inline-styles",
+            "baseline:allow-no-inline-styles",
+            "baseline:allow-next-line no-inline-styles",
         ));
         assert!(is_suppressed(
             &lines,
             1,
-            "guardrails:allow-any-other-rule",
-            "guardrails:allow-next-line any-other-rule",
+            "baseline:allow-any-other-rule",
+            "baseline:allow-next-line any-other-rule",
         ));
     }
 
     #[test]
     fn suppressed_by_allow_next_line() {
         let lines = vec![
-            "// guardrails:allow-next-line no-inline-styles",
+            "// baseline:allow-next-line no-inline-styles",
             "let x = style={{ color: 'red' }};",
         ];
         assert!(is_suppressed(
             &lines,
             2,
-            "guardrails:allow-no-inline-styles",
-            "guardrails:allow-next-line no-inline-styles",
+            "baseline:allow-no-inline-styles",
+            "baseline:allow-next-line no-inline-styles",
         ));
     }
 
     #[test]
     fn suppressed_by_allow_next_line_all() {
         let lines = vec![
-            "// guardrails:allow-next-line all",
+            "// baseline:allow-next-line all",
             "let x = style={{ color: 'red' }};",
         ];
         assert!(is_suppressed(
             &lines,
             2,
-            "guardrails:allow-no-inline-styles",
-            "guardrails:allow-next-line no-inline-styles",
+            "baseline:allow-no-inline-styles",
+            "baseline:allow-next-line no-inline-styles",
         ));
     }
 
     #[test]
     fn not_suppressed_wrong_rule_id() {
         let lines = vec![
-            "let x = style={{ color: 'red' }}; // guardrails:allow-other-rule",
+            "let x = style={{ color: 'red' }}; // baseline:allow-other-rule",
         ];
         assert!(!is_suppressed(
             &lines,
             1,
-            "guardrails:allow-no-inline-styles",
-            "guardrails:allow-next-line no-inline-styles",
+            "baseline:allow-no-inline-styles",
+            "baseline:allow-next-line no-inline-styles",
         ));
     }
 
@@ -912,22 +912,22 @@ mod tests {
         assert!(!is_suppressed(
             &lines,
             1,
-            "guardrails:allow-no-inline-styles",
-            "guardrails:allow-next-line no-inline-styles",
+            "baseline:allow-no-inline-styles",
+            "baseline:allow-next-line no-inline-styles",
         ));
     }
 
     #[test]
     fn not_suppressed_next_line_wrong_rule() {
         let lines = vec![
-            "// guardrails:allow-next-line other-rule",
+            "// baseline:allow-next-line other-rule",
             "let x = style={{ color: 'red' }};",
         ];
         assert!(!is_suppressed(
             &lines,
             2,
-            "guardrails:allow-no-inline-styles",
-            "guardrails:allow-next-line no-inline-styles",
+            "baseline:allow-no-inline-styles",
+            "baseline:allow-next-line no-inline-styles",
         ));
     }
 
@@ -938,8 +938,8 @@ mod tests {
         assert!(!is_suppressed(
             &lines,
             0,
-            "guardrails:allow-any-rule",
-            "guardrails:allow-next-line any-rule",
+            "baseline:allow-any-rule",
+            "baseline:allow-next-line any-rule",
         ));
     }
 
@@ -950,8 +950,8 @@ mod tests {
         assert!(!is_suppressed(
             &lines,
             5,
-            "guardrails:allow-any-rule",
-            "guardrails:allow-next-line any-rule",
+            "baseline:allow-any-rule",
+            "baseline:allow-next-line any-rule",
         ));
     }
 
@@ -1261,7 +1261,7 @@ mod tests {
         }];
         let built = build_rules(&rules).unwrap();
         let path = PathBuf::from("test.ts");
-        let content = "console.log('hello'); // guardrails:allow-no-console\n";
+        let content = "console.log('hello'); // baseline:allow-no-console\n";
 
         let violations = run_rules_on_content(&built.rule_groups, &path, content, "test.ts", "test.ts");
         assert_eq!(violations.len(), 0);
@@ -1481,11 +1481,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
 
         // Write config
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
             r#"
-[guardrails]
+[baseline]
 
 [[rule]]
 id = "no-console"
@@ -1514,11 +1514,11 @@ message = "Do not use console.log"
     fn run_scan_no_violations() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
             r#"
-[guardrails]
+[baseline]
 
 [[rule]]
 id = "no-console"
@@ -1545,11 +1545,11 @@ glob = "**/*.ts"
     fn run_scan_excludes_files() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
             r#"
-[guardrails]
+[baseline]
 exclude = ["**/dist/**"]
 
 [[rule]]
@@ -1579,11 +1579,11 @@ message = "no console"
     fn run_scan_file_presence_rule() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
             r#"
-[guardrails]
+[baseline]
 
 [[rule]]
 id = "has-readme"
@@ -1603,7 +1603,7 @@ message = "README.md is required"
     #[test]
     fn run_scan_missing_config_errors() {
         let result = run_scan(
-            Path::new("/nonexistent/guardrails.toml"),
+            Path::new("/nonexistent/baseline.toml"),
             &[PathBuf::from(".")],
         );
         assert!(result.is_err());
@@ -1613,7 +1613,7 @@ message = "README.md is required"
     #[test]
     fn run_scan_invalid_config_errors() {
         let dir = tempfile::tempdir().unwrap();
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(&config, "this is not valid toml [[[").unwrap();
 
         let result = run_scan(&config, &[dir.path().to_path_buf()]);
@@ -1625,11 +1625,11 @@ message = "README.md is required"
     fn run_scan_with_ratchet_rule() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
             r#"
-[guardrails]
+[baseline]
 
 [[rule]]
 id = "legacy-api"
@@ -1658,11 +1658,11 @@ message = "legacy api usage"
     fn run_scan_stdin_finds_violations() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
             r#"
-[guardrails]
+[baseline]
 
 [[rule]]
 id = "no-console"
@@ -1685,11 +1685,11 @@ message = "no console.log"
     fn run_scan_stdin_no_violations() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
             r#"
-[guardrails]
+[baseline]
 
 [[rule]]
 id = "no-console"
@@ -1711,11 +1711,11 @@ glob = "**/*.ts"
     fn run_scan_stdin_glob_filters_filename() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
             r#"
-[guardrails]
+[baseline]
 
 [[rule]]
 id = "no-console"
@@ -1741,11 +1741,11 @@ glob = "**/*.tsx"
     fn run_baseline_counts_ratchet_matches() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
             r#"
-[guardrails]
+[baseline]
 
 [[rule]]
 id = "legacy-api"
@@ -1777,11 +1777,11 @@ message = "legacy usage"
     fn run_baseline_skips_non_ratchet_rules() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
             r#"
-[guardrails]
+[baseline]
 
 [[rule]]
 id = "no-console"
@@ -1857,11 +1857,11 @@ message = "legacy usage"
     fn run_scan_with_preset() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
             r#"
-[guardrails]
+[baseline]
 extends = ["shadcn-strict"]
 "#,
         )
@@ -1896,12 +1896,12 @@ message = "No TODOs allowed"
         )
         .unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
             format!(
                 r#"
-[guardrails]
+[baseline]
 plugins = ["{}"]
 "#,
                 plugin_path.display()
@@ -1921,11 +1921,11 @@ plugins = ["{}"]
     fn run_scan_skip_no_matching_files() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
             r#"
-[guardrails]
+[baseline]
 
 [[rule]]
 id = "no-console"

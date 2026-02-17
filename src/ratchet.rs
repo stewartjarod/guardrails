@@ -87,7 +87,7 @@ fn count_pattern(
     let toml_config: TomlConfig =
         toml::from_str(&config_text).map_err(RatchetError::ConfigParse)?;
 
-    let exclude_set = scan::build_glob_set(&toml_config.guardrails.exclude)
+    let exclude_set = scan::build_glob_set(&toml_config.baseline.exclude)
         .map_err(RatchetError::Scan)?;
 
     // Build a temporary ratchet rule (max_count is required by RatchetRule)
@@ -493,7 +493,7 @@ mod tests {
 
     #[test]
     fn append_generates_valid_toml() {
-        let config = "[guardrails]\n";
+        let config = "[baseline]\n";
         let spec = RatchetRuleSpec {
             id: "no-console".into(),
             pattern: r"console\.log".into(),
@@ -518,7 +518,7 @@ mod tests {
 
     #[test]
     fn append_default_glob_omitted() {
-        let config = "[guardrails]\n";
+        let config = "[baseline]\n";
         let spec = RatchetRuleSpec {
             id: "test".into(),
             pattern: "foo".into(),
@@ -534,7 +534,7 @@ mod tests {
 
     #[test]
     fn append_escapes_quotes() {
-        let config = "[guardrails]\n";
+        let config = "[baseline]\n";
         let spec = RatchetRuleSpec {
             id: "test".into(),
             pattern: r#"say "hello""#.into(),
@@ -554,7 +554,7 @@ mod tests {
 
     #[test]
     fn update_max_count_basic() {
-        let config = r#"[guardrails]
+        let config = r#"[baseline]
 
 [[rule]]
 id = "legacy-api"
@@ -572,7 +572,7 @@ message = "42 remaining"
 
     #[test]
     fn update_max_count_nonexistent_id() {
-        let config = r#"[guardrails]
+        let config = r#"[baseline]
 
 [[rule]]
 id = "legacy-api"
@@ -588,7 +588,7 @@ message = "test"
 
     #[test]
     fn update_max_count_multiple_rules() {
-        let config = r#"[guardrails]
+        let config = r#"[baseline]
 
 [[rule]]
 id = "rule-a"
@@ -617,7 +617,7 @@ message = "200 remaining"
 
     #[test]
     fn update_max_count_preserves_trailing_newline() {
-        let config = "[guardrails]\n\n[[rule]]\nid = \"test\"\ntype = \"ratchet\"\nmax_count = 5\nmessage = \"test\"\n";
+        let config = "[baseline]\n\n[[rule]]\nid = \"test\"\ntype = \"ratchet\"\nmax_count = 5\nmessage = \"test\"\n";
         let result = update_max_count(config, "test", 3).unwrap();
         assert!(result.ends_with('\n'));
     }
@@ -727,8 +727,8 @@ message = "200 remaining"
     fn run_add_creates_rule_and_counts() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
-        fs::write(&config, "[guardrails]\n").unwrap();
+        let config = dir.path().join("baseline.toml");
+        fs::write(&config, "[baseline]\n").unwrap();
 
         let src_dir = dir.path().join("src");
         fs::create_dir(&src_dir).unwrap();
@@ -747,8 +747,8 @@ message = "200 remaining"
     fn run_add_custom_id_and_message() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
-        fs::write(&config, "[guardrails]\n").unwrap();
+        let config = dir.path().join("baseline.toml");
+        fs::write(&config, "[baseline]\n").unwrap();
 
         let src_dir = dir.path().join("src");
         fs::create_dir(&src_dir).unwrap();
@@ -775,10 +775,10 @@ message = "200 remaining"
     fn run_add_duplicate_id_errors() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
-            r#"[guardrails]
+            r#"[baseline]
 
 [[rule]]
 id = "existing"
@@ -809,8 +809,8 @@ message = "m"
     fn run_add_with_regex() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
-        fs::write(&config, "[guardrails]\n").unwrap();
+        let config = dir.path().join("baseline.toml");
+        fs::write(&config, "[baseline]\n").unwrap();
 
         let src_dir = dir.path().join("src");
         fs::create_dir(&src_dir).unwrap();
@@ -837,10 +837,10 @@ message = "m"
     fn run_down_lowers_max_count() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
-            r#"[guardrails]
+            r#"[baseline]
 
 [[rule]]
 id = "legacy-api"
@@ -868,10 +868,10 @@ message = "10 remaining"
     fn run_down_no_decrease_errors() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
-            r#"[guardrails]
+            r#"[baseline]
 
 [[rule]]
 id = "legacy-api"
@@ -896,8 +896,8 @@ message = "test"
     fn run_down_rule_not_found_errors() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
-        fs::write(&config, "[guardrails]\n").unwrap();
+        let config = dir.path().join("baseline.toml");
+        fs::write(&config, "[baseline]\n").unwrap();
 
         let result = run_down(&config, "nonexistent", &[dir.path().to_path_buf()]);
         assert!(result.is_err());
@@ -908,8 +908,8 @@ message = "test"
     fn run_from_creates_rules_from_baseline() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
-        fs::write(&config, "[guardrails]\n").unwrap();
+        let config = dir.path().join("baseline.toml");
+        fs::write(&config, "[baseline]\n").unwrap();
 
         let baseline = dir.path().join("baseline.json");
         fs::write(
@@ -933,10 +933,10 @@ message = "test"
     fn run_from_skips_existing_rules() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
+        let config = dir.path().join("baseline.toml");
         fs::write(
             &config,
-            r#"[guardrails]
+            r#"[baseline]
 
 [[rule]]
 id = "todo"
@@ -971,8 +971,8 @@ message = "existing"
     fn run_from_invalid_baseline_errors() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
-        fs::write(&config, "[guardrails]\n").unwrap();
+        let config = dir.path().join("baseline.toml");
+        fs::write(&config, "[baseline]\n").unwrap();
 
         let baseline = dir.path().join("baseline.json");
         fs::write(&baseline, "not valid json").unwrap();
@@ -986,8 +986,8 @@ message = "existing"
     fn run_from_missing_baseline_errors() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
-        fs::write(&config, "[guardrails]\n").unwrap();
+        let config = dir.path().join("baseline.toml");
+        fs::write(&config, "[baseline]\n").unwrap();
 
         let result = run_from(&config, &dir.path().join("nonexistent.json"));
         assert!(result.is_err());
@@ -998,8 +998,8 @@ message = "existing"
     fn count_pattern_counts_matches() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
-        fs::write(&config, "[guardrails]\n").unwrap();
+        let config = dir.path().join("baseline.toml");
+        fs::write(&config, "[baseline]\n").unwrap();
 
         let src_dir = dir.path().join("src");
         fs::create_dir(&src_dir).unwrap();
@@ -1014,8 +1014,8 @@ message = "existing"
     fn count_pattern_respects_glob() {
         let dir = tempfile::tempdir().unwrap();
 
-        let config = dir.path().join("guardrails.toml");
-        fs::write(&config, "[guardrails]\n").unwrap();
+        let config = dir.path().join("baseline.toml");
+        fs::write(&config, "[baseline]\n").unwrap();
 
         let src_dir = dir.path().join("src");
         fs::create_dir(&src_dir).unwrap();

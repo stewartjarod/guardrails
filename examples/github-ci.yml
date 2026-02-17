@@ -1,10 +1,10 @@
-# Example: Guardrails CI workflow for GitHub Actions
-# Copy this file to .github/workflows/guardrails.yml in your project.
+# Example: Baseline CI workflow for GitHub Actions
+# Copy this file to .github/workflows/baseline.yml in your project.
 #
 # On pull requests, only files changed in the PR are scanned.
 # On pushes to main, all files are scanned.
 
-name: Guardrails
+name: Baseline
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ on:
     branches: [main]
 
 jobs:
-  guardrails:
+  baseline:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: AstroGuard/guardrails@main
+      - uses: stewartjarod/baseline@main
         with:
           paths: 'src'
           # changed-only defaults to "auto" (enabled on PRs, disabled on push)

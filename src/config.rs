@@ -5,7 +5,7 @@ pub enum Severity {
     Warning,
 }
 
-/// Parsed rule configuration from `guardrails.toml`.
+/// Parsed rule configuration from `baseline.toml`.
 #[derive(Debug, Clone)]
 pub struct RuleConfig {
     pub id: String,

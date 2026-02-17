@@ -5,16 +5,16 @@ const { existsSync, chmodSync, statSync } = require("fs");
 const path = require("path");
 
 const PLATFORMS = {
-  "darwin-arm64": "code-guardrails-darwin-arm64",
-  "darwin-x64": "code-guardrails-darwin-x64",
-  "linux-x64": "code-guardrails-linux-x64",
-  "linux-arm64": "code-guardrails-linux-arm64",
-  "win32-x64": "code-guardrails-win32-x64",
+  "darwin-arm64": "code-baseline-darwin-arm64",
+  "darwin-x64": "code-baseline-darwin-x64",
+  "linux-x64": "code-baseline-linux-x64",
+  "linux-arm64": "code-baseline-linux-arm64",
+  "win32-x64": "code-baseline-win32-x64",
 };
 
 function getBinaryPath() {
   // Allow override via environment variable
-  const override = process.env.GUARDRAILS_BINARY;
+  const override = process.env.BASELINE_BINARY;
   if (override) {
     return override;
   }
@@ -25,18 +25,18 @@ function getBinaryPath() {
   if (!pkg) {
     console.error(
       `Unsupported platform: ${platformKey}\n` +
-        `code-guardrails does not ship a prebuilt binary for your platform.\n\n` +
+        `code-baseline does not ship a prebuilt binary for your platform.\n\n` +
         `You can install from source with:\n` +
-        `  cargo install guardrails\n`
+        `  cargo install code-baseline\n`
     );
     process.exit(1);
   }
 
-  const binaryName = process.platform === "win32" ? "guardrails.exe" : "guardrails";
+  const binaryName = process.platform === "win32" ? "baseline.exe" : "baseline";
 
   // Both packages live as siblings in the same node_modules directory
-  // __dirname = .../node_modules/code-guardrails/bin
-  // sibling   = .../node_modules/<platform-pkg>/guardrails
+  // __dirname = .../node_modules/code-baseline/bin
+  // sibling   = .../node_modules/<platform-pkg>/baseline
   const nodeModulesDir = path.resolve(__dirname, "..", "..");
   const binaryPath = path.join(nodeModulesDir, pkg, binaryName);
 
@@ -55,9 +55,9 @@ function getBinaryPath() {
     `Could not find the binary for ${pkg}.\n` +
       `This usually means the optional dependency was not installed.\n\n` +
       `Try reinstalling:\n` +
-      `  npm install -g code-guardrails\n\n` +
+      `  npm install -g code-baseline\n\n` +
       `Or install from source:\n` +
-      `  cargo install guardrails\n`
+      `  cargo install code-baseline\n`
   );
   process.exit(1);
 }
@@ -68,7 +68,7 @@ const result = spawnSync(binary, process.argv.slice(2), {
 });
 
 if (result.error) {
-  console.error(`Failed to execute guardrails: ${result.error.message}`);
+  console.error(`Failed to execute baseline: ${result.error.message}`);
   process.exit(1);
 }
 

@@ -70,7 +70,7 @@ fn handle_initialize(id: Option<serde_json::Value>) -> serde_json::Value {
                 "tools": {}
             },
             "serverInfo": {
-                "name": "guardrails",
+                "name": "baseline",
                 "version": env!("CARGO_PKG_VERSION")
             }
         }
@@ -84,7 +84,7 @@ fn handle_tools_list(id: Option<serde_json::Value>) -> serde_json::Value {
         "result": {
             "tools": [
                 {
-                    "name": "guardrails_scan",
+                    "name": "baseline_scan",
                     "description": "Scan files for rule violations. Returns structured violations with fix suggestions.",
                     "inputSchema": {
                         "type": "object",
@@ -106,7 +106,7 @@ fn handle_tools_list(id: Option<serde_json::Value>) -> serde_json::Value {
                     }
                 },
                 {
-                    "name": "guardrails_list_rules",
+                    "name": "baseline_list_rules",
                     "description": "List all configured rules and their descriptions.",
                     "inputSchema": {
                         "type": "object",
@@ -131,8 +131,8 @@ fn handle_tools_call(
     let arguments = params.get("arguments").cloned().unwrap_or(json!({}));
 
     match tool_name {
-        "guardrails_scan" => handle_scan(&id, &arguments, config_path),
-        "guardrails_list_rules" => handle_list_rules(&id, config_path),
+        "baseline_scan" => handle_scan(&id, &arguments, config_path),
+        "baseline_list_rules" => handle_list_rules(&id, config_path),
         _ => json!({
             "jsonrpc": "2.0",
             "id": id,
@@ -240,7 +240,7 @@ fn handle_list_rules(
         }
     };
 
-    let resolved = match presets::resolve_rules(&toml_config.guardrails.extends, &toml_config.rule) {
+    let resolved = match presets::resolve_rules(&toml_config.baseline.extends, &toml_config.rule) {
         Ok(r) => r,
         Err(e) => {
             return json!({
@@ -331,7 +331,7 @@ mod tests {
         assert_eq!(resp["jsonrpc"], "2.0");
         assert_eq!(resp["id"], 1);
         assert_eq!(resp["result"]["protocolVersion"], "2024-11-05");
-        assert_eq!(resp["result"]["serverInfo"]["name"], "guardrails");
+        assert_eq!(resp["result"]["serverInfo"]["name"], "baseline");
     }
 
     #[test]
@@ -340,8 +340,8 @@ mod tests {
         assert_eq!(resp["jsonrpc"], "2.0");
         let tools = resp["result"]["tools"].as_array().unwrap();
         assert_eq!(tools.len(), 2);
-        assert_eq!(tools[0]["name"], "guardrails_scan");
-        assert_eq!(tools[1]["name"], "guardrails_list_rules");
+        assert_eq!(tools[0]["name"], "baseline_scan");
+        assert_eq!(tools[1]["name"], "baseline_list_rules");
     }
 
     #[test]
@@ -436,7 +436,7 @@ mod tests {
         let resp = handle_tools_call(
             Some(json!(3)),
             &json!({ "name": "nonexistent_tool", "arguments": {} }),
-            std::path::Path::new("guardrails.toml"),
+            std::path::Path::new("baseline.toml"),
         );
         assert!(resp["error"].is_object());
         assert_eq!(resp["error"]["code"], -32602);

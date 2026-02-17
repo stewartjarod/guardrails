@@ -4,7 +4,7 @@ Automate the full release flow for this crate: determine version bump, generate 
 
 ## Instructions
 
-You are performing a release of the `guardrails` crate. Follow each step carefully and ask for confirmation before any irreversible action (publish, push, GitHub release).
+You are performing a release of the `code-baseline` crate. Follow each step carefully and ask for confirmation before any irreversible action (publish, push, GitHub release).
 
 ### Step 1: Determine the version bump
 
@@ -116,4 +116,4 @@ After all steps complete, print a summary:
 - Bump type used
 - Number of commits included
 - Link to the GitHub release (if created)
-- Link to the crates.io page: `https://crates.io/crates/guardrails`
+- Link to the crates.io page: `https://crates.io/crates/code-baseline`

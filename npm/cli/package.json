@@ -1,24 +1,24 @@
 {
-  "name": "code-guardrails",
+  "name": "code-baseline",
   "version": "0.5.0",
   "description": "Enforce architectural decisions AI coding tools keep ignoring",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/stewartjarod/guardrails"
+    "url": "https://github.com/stewartjarod/baseline"
   },
   "bin": {
-    "guardrails": "bin/guardrails"
+    "baseline": "bin/baseline"
   },
   "files": [
-    "bin/guardrails"
+    "bin/baseline"
   ],
   "optionalDependencies": {
-    "code-guardrails-darwin-arm64": "0.5.0",
-    "code-guardrails-darwin-x64": "0.5.0",
-    "code-guardrails-linux-x64": "0.5.0",
-    "code-guardrails-linux-arm64": "0.5.0",
-    "code-guardrails-win32-x64": "0.5.0"
+    "code-baseline-darwin-arm64": "0.5.0",
+    "code-baseline-darwin-x64": "0.5.0",
+    "code-baseline-linux-x64": "0.5.0",
+    "code-baseline-linux-arm64": "0.5.0",
+    "code-baseline-win32-x64": "0.5.0"
   },
   "keywords": [
     "linter",

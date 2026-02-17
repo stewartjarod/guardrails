@@ -1,11 +1,11 @@
 {
-  "name": "code-guardrails-win32-x64",
+  "name": "code-baseline-win32-x64",
   "version": "0.5.0",
-  "description": "Guardrails CLI binary for Windows x64",
+  "description": "Baseline CLI binary for Windows x64",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/stewartjarod/guardrails"
+    "url": "https://github.com/stewartjarod/baseline"
   },
   "os": [
     "win32"
@@ -14,6 +14,6 @@
     "x64"
   ],
   "files": [
-    "guardrails.exe"
+    "baseline.exe"
   ]
 }

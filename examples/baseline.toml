@@ -1,4 +1,4 @@
-[guardrails]
+[baseline]
 name = "shadcn-themed-project"
 extends = ["shadcn-strict"]
 include = ["src/**/*"]

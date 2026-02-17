@@ -44,7 +44,7 @@
 ## [v0.3.0] - 2026-02-12
 
 ### Features
-- add npm binary distribution for `npx code-guardrails` (5eb18de)
+- add npm binary distribution for `npx code-baseline` (5eb18de)
 
 ### Bug Fixes
 - include Cargo.lock in release commit step (de19f11)

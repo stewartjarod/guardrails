@@ -1,7 +1,7 @@
-# guardrails.toml — Code guardrail configuration
-# Docs: https://github.com/AstroGuard/guardrails
+# baseline.toml — Baseline configuration
+# Docs: https://github.com/stewartjarod/baseline
 
-[guardrails]
+[baseline]
 name = "my-project"
 
 # Presets: load a curated set of rules in one line.
@@ -105,7 +105,7 @@ message = "Competing CSS framework detected — this project uses Tailwind"
 # ══════════════════════════════════════════════
 # RATCHET RULES
 # Enforce decreasing counts of legacy patterns.
-# Use `guardrails baseline` to find current count.
+# Use `baseline snapshot` to find current count.
 # ══════════════════════════════════════════════
 
 # [[rule]]
@@ -233,9 +233,9 @@ message = "Competing CSS framework detected — this project uses Tailwind"
 # ══════════════════════════════════════════════
 # ESCAPE-HATCH COMMENTS
 # Suppress violations with inline comments:
-#   // guardrails:allow-{rule-id}          (same line)
-#   // guardrails:allow-all                (same line, any rule)
-#   // guardrails:allow-next-line {rule-id} (next line)
+#   // baseline:allow-{rule-id}          (same line)
+#   // baseline:allow-all                (same line, any rule)
+#   // baseline:allow-next-line {rule-id} (next line)
 # ══════════════════════════════════════════════
 
 

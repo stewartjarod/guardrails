@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Guardrails is a code quality enforcement tool that lints React/TypeScript projects for Tailwind CSS best practices and semantic theming. Rules are implemented in Rust and configured via TOML.
+Baseline is a code quality enforcement tool that lints React/TypeScript projects for Tailwind CSS best practices and semantic theming. Rules are implemented in Rust and configured via TOML.
 
 ## Build Commands
 
@@ -31,7 +31,7 @@ Guardrails is a code quality enforcement tool that lints React/TypeScript projec
 
 ## Configuration
 
-`examples/guardrails.toml` is the sample config. `examples/guardrails.example.toml` documents all supported rule types:
+`examples/baseline.toml` is the sample config. `examples/baseline.example.toml` documents all supported rule types:
 - `banned-import`, `banned-pattern`, `required-pattern`, `banned-dependency`, `file-presence`, `ratchet`, `tailwind-dark-mode`, `tailwind-theme-tokens`
 
 Each `[[rule]]` has: `id`, `type`, `severity`, `glob`, `message`, `suggest`, plus type-specific fields (`allowed_classes`, `token_map`, `packages`, `pattern`, `max_count`, etc.).

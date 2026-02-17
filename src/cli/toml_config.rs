@@ -4,14 +4,14 @@ use serde::Deserialize;
 /// Top-level TOML config file structure.
 #[derive(Debug, Deserialize)]
 pub struct TomlConfig {
-    pub guardrails: GuardrailsSection,
+    pub baseline: BaselineSection,
     #[serde(default)]
     pub rule: Vec<TomlRule>,
 }
 
-/// The `[guardrails]` section.
+/// The `[baseline]` section.
 #[derive(Debug, Deserialize)]
-pub struct GuardrailsSection {
+pub struct BaselineSection {
     #[allow(dead_code)]
     pub name: Option<String>,
     #[serde(default)]

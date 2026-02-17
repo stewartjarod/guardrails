@@ -400,9 +400,9 @@ fn write_sarif(result: &ScanResult, out: &mut dyn Write) {
         "runs": [{
             "tool": {
                 "driver": {
-                    "name": "guardrails",
+                    "name": "baseline",
                     "version": env!("CARGO_PKG_VERSION"),
-                    "informationUri": "https://github.com/AstroGuard/guardrails",
+                    "informationUri": "https://github.com/stewartjarod/baseline",
                     "rules": rules,
                 }
             },
@@ -420,7 +420,7 @@ pub fn print_markdown(result: &ScanResult) {
 }
 
 fn write_markdown(result: &ScanResult, out: &mut dyn Write) {
-    let _ = writeln!(out, "## Guardrails Report\n");
+    let _ = writeln!(out, "## Baseline Report\n");
 
     let errors = result
         .violations
@@ -804,7 +804,7 @@ mod tests {
         write_markdown(&result, &mut out);
 
         let output = String::from_utf8(out).unwrap();
-        assert!(output.contains("## Guardrails Report"));
+        assert!(output.contains("## Baseline Report"));
         assert!(output.contains("No violations found"));
         assert!(output.contains("5 files scanned"));
     }
@@ -820,7 +820,7 @@ mod tests {
         write_markdown(&result, &mut out);
 
         let output = String::from_utf8(out).unwrap();
-        assert!(output.contains("## Guardrails Report"));
+        assert!(output.contains("## Baseline Report"));
         assert!(output.contains("2 errors, 1 warning"));
         assert!(output.contains("### Errors"));
         assert!(output.contains("### Warnings"));
@@ -1321,7 +1321,7 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
 
         assert_eq!(parsed["version"], "2.1.0");
-        assert_eq!(parsed["runs"][0]["tool"]["driver"]["name"], "guardrails");
+        assert_eq!(parsed["runs"][0]["tool"]["driver"]["name"], "baseline");
 
         // Rules should be sorted and deduplicated
         let rules = parsed["runs"][0]["tool"]["driver"]["rules"].as_array().unwrap();

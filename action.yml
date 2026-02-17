@@ -1,4 +1,4 @@
-name: 'Code Guardrails'
+name: 'Baseline'
 description: 'Enforce architectural decisions AI coding tools keep ignoring'
 branding:
   icon: 'shield'
@@ -6,9 +6,9 @@ branding:
 
 inputs:
   config:
-    description: 'Path to guardrails.toml config file'
+    description: 'Path to baseline.toml config file'
     required: false
-    default: 'guardrails.toml'
+    default: 'baseline.toml'
   paths:
     description: 'Paths to scan (space-separated)'
     required: false
@@ -25,7 +25,7 @@ inputs:
     required: false
     default: 'false'
   version:
-    description: 'Version of guardrails to install'
+    description: 'Version of baseline to install'
     required: false
     default: 'latest'
 
@@ -40,16 +40,16 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Install Guardrails
+    - name: Install Baseline
       shell: bash
       run: |
         if [ "${{ inputs.version }}" = "latest" ]; then
-          cargo install guardrails
+          cargo install code-baseline
         else
-          cargo install guardrails@${{ inputs.version }}
+          cargo install code-baseline@${{ inputs.version }}
         fi
 
-    - name: Run Guardrails scan
+    - name: Run Baseline scan
       id: scan
       shell: bash
       run: |
@@ -68,7 +68,7 @@ runs:
 
         # Run with github format for inline annotations
         set +e
-        guardrails scan ${{ inputs.paths }} \
+        baseline scan ${{ inputs.paths }} \
           --config ${{ inputs.config }} \
           --format github \
           $CHANGED_FLAG $BASE_FLAG
@@ -79,7 +79,7 @@ runs:
         echo "exit_code=$SCAN_EXIT" >> "$GITHUB_OUTPUT"
 
         # Run again with markdown for step summary
-        guardrails scan ${{ inputs.paths }} \
+        baseline scan ${{ inputs.paths }} \
           --config ${{ inputs.config }} \
           --format markdown \
           $CHANGED_FLAG $BASE_FLAG >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true

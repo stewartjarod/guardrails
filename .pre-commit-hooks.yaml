@@ -1,7 +1,7 @@
-- id: guardrails
-  name: Guardrails
+- id: baseline
+  name: Baseline
   description: Enforce architectural decisions AI coding tools keep ignoring
-  entry: guardrails scan
+  entry: baseline scan
   language: rust
   types_or: [javascript, jsx, typescript, tsx, html, json]
   args: ['--format', 'compact']

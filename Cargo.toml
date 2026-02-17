@@ -1,13 +1,17 @@
 [package]
-name = "guardrails"
+name = "code-baseline"
 version = "0.5.0"
 edition = "2021"
 description = "Enforce architectural decisions AI coding tools keep ignoring"
 license = "MIT"
-repository = "https://github.com/stewartjarod/guardrails"
+repository = "https://github.com/stewartjarod/baseline"
 readme = "README.md"
 keywords = ["linter", "tailwind", "react", "code-quality"]
 categories = ["development-tools"]
+
+[[bin]]
+name = "baseline"
+path = "src/main.rs"
 
 [dependencies]
 regex = "1"
