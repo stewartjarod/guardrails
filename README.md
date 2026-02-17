@@ -2,6 +2,13 @@
   <img src="assets/baseline.png" alt="Baseline logo" width="300" />
 </p>
 
+<p align="center">
+  <a href="https://crates.io/crates/code-baseline"><img src="https://img.shields.io/crates/v/code-baseline" alt="Crates.io"></a>
+  <a href="https://www.npmjs.com/package/code-baseline"><img src="https://img.shields.io/npm/v/code-baseline" alt="npm"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://github.com/stewartjarod/baseline/actions"><img src="https://img.shields.io/github/actions/workflow/status/stewartjarod/baseline/ci.yml?branch=main&label=CI" alt="CI"></a>
+</p>
+
 # baseline
 
 Stop AI from undoing your team's decisions.
