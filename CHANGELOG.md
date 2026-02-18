@@ -1,5 +1,18 @@
 # Changelog
 
+## [v1.1.0] - 2026-02-17
+
+### Features
+- add tree-sitter AST support behind `ast` feature flag with 4 structural rules: `max-component-size`, `no-nested-components`, `prefer-use-reducer`, `no-cascading-set-state`
+- add AST rules to react and nextjs-best-practices presets (conditional on `ast` feature)
+- add no-sequential-await and no-derived-state-effect to react preset (b3e4a30)
+- add react and nextjs-best-practices presets (e9c1225)
+
+### Other
+- comprehensive documentation audit and corrections (217fcd4)
+- add CI workflow for cargo test (e52e0e2)
+- add crates.io, npm, license, and CI badges to README (d82d753)
+
 ## [v1.0.1] - 2026-02-17
 
 ### Other

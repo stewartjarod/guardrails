@@ -1,6 +1,6 @@
 [package]
 name = "code-baseline"
-version = "1.0.1"
+version = "1.1.0"
 edition = "2021"
 description = "Enforce architectural decisions AI coding tools keep ignoring"
 license = "MIT"
@@ -13,6 +13,10 @@ categories = ["development-tools"]
 name = "baseline"
 path = "src/main.rs"
 
+[features]
+default = []
+ast = ["dep:tree-sitter", "dep:tree-sitter-typescript", "dep:tree-sitter-javascript"]
+
 [dependencies]
 regex = "1"
 clap = { version = "4", features = ["derive"] }
@@ -22,6 +26,9 @@ ignore = "0.4"
 rayon = "1"
 globset = "0.4"
 serde_json = "1"
+tree-sitter = { version = "0.24", optional = true }
+tree-sitter-typescript = { version = "0.23", optional = true }
+tree-sitter-javascript = { version = "0.23", optional = true }
 
 [dev-dependencies]
 tempfile = "3.25.0"

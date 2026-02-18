@@ -254,3 +254,70 @@ message = "Competing CSS framework detected — this project uses Tailwind"
 # packages = ["@radix-ui/react-dialog", "@radix-ui/react-popover"]
 # exclude_glob = ["**/components/ui/**"]
 # message = "Import shadcn wrappers, not Radix directly"
+
+
+# ══════════════════════════════════════════════
+# AST RULES (require `ast` feature flag)
+# Install with: cargo install code-baseline --features ast
+# These rules use tree-sitter for structural analysis
+# of React/TypeScript/JSX/JavaScript files.
+# ══════════════════════════════════════════════
+
+# ──────────────────────────────────────────────
+# Max Component Size
+# Flag components that exceed a line count threshold.
+# ──────────────────────────────────────────────
+
+# [[rule]]
+# id = "max-component-size"
+# type = "max-component-size"
+# severity = "warning"
+# glob = "**/*.{tsx,jsx}"
+# max_count = 150
+# message = "Component exceeds 150 lines — split into smaller components"
+# suggest = "Extract logic into custom hooks or break into sub-components"
+
+# ──────────────────────────────────────────────
+# No Nested Components
+# Detects component definitions inside other components.
+# Nested components are re-created every render, causing
+# remounting and state loss.
+# ──────────────────────────────────────────────
+
+# [[rule]]
+# id = "no-nested-components"
+# type = "no-nested-components"
+# severity = "error"
+# glob = "**/*.{tsx,jsx}"
+# message = "Component defined inside another component — causes remounting on every render"
+# suggest = "Move the component to module level or pass as a prop"
+
+# ──────────────────────────────────────────────
+# Prefer useReducer
+# Flag components with too many useState calls.
+# Related state is better modelled with useReducer.
+# ──────────────────────────────────────────────
+
+# [[rule]]
+# id = "prefer-use-reducer"
+# type = "prefer-use-reducer"
+# severity = "warning"
+# glob = "**/*.{tsx,jsx}"
+# max_count = 4
+# message = "Component has 4+ useState calls — consider useReducer for related state"
+# suggest = "Group related state into a single useReducer"
+
+# ──────────────────────────────────────────────
+# No Cascading setState in useEffect
+# Flag useEffect callbacks with too many setState calls.
+# Multiple setState in an effect often causes cascading renders.
+# ──────────────────────────────────────────────
+
+# [[rule]]
+# id = "no-cascading-set-state"
+# type = "no-cascading-set-state"
+# severity = "warning"
+# glob = "**/*.{tsx,jsx}"
+# max_count = 3
+# message = "useEffect has 3+ setState calls — consider useReducer or derived state"
+# suggest = "Combine state updates with useReducer or compute derived values"

@@ -11,6 +11,8 @@ Baseline is a code quality enforcement tool that lints React/TypeScript projects
 - `cargo check` — type-check without building
 - `cargo build` — compile the library
 - `cargo test` — run all tests
+- `cargo test --features ast` — run all tests including AST rules
+- `cargo build --features ast` — compile with tree-sitter AST support
 
 ## Architecture
 
@@ -23,7 +25,7 @@ Baseline is a code quality enforcement tool that lints React/TypeScript projects
 - `Violation` — detected issue (rule_id, severity, file, line, column, message, suggest, source_line) (`src/rules/mod.rs`)
 - `RuleBuildError` — construction errors (e.g., `InvalidRegex`) (`src/rules/mod.rs`)
 
-**Nine rule types** (in `src/rules/`):
+**Nine regex/string rule types** (in `src/rules/`):
 - `BannedImportRule` — detects banned imports in JS/TS (`import`, `require`, `export from`)
 - `BannedPatternRule` — literal or regex pattern matching
 - `RequiredPatternRule` — ensures patterns exist in matching files (supports `condition_pattern`)
@@ -33,6 +35,14 @@ Baseline is a code quality enforcement tool that lints React/TypeScript projects
 - `WindowPatternRule` — proximity enforcement (trigger + required pattern within N lines)
 - `TailwindDarkModeRule` — ensures hardcoded Tailwind color classes have `dark:` variants
 - `TailwindThemeTokensRule` — bans raw Tailwind color classes, suggests semantic tokens (~130+ default mappings)
+
+**Four AST rule types** (in `src/rules/ast/`, requires `ast` feature flag):
+- `MaxComponentSizeRule` — flags React components exceeding a line count (`max_count`, default 150)
+- `NoNestedComponentsRule` — detects component definitions inside other components
+- `PreferUseReducerRule` — flags components with too many `useState` calls (`max_count`, default 4)
+- `NoCascadingSetStateRule` — flags `useEffect` callbacks with too many `set*` calls (`max_count`, default 3)
+
+**AST infrastructure** (`src/rules/ast/mod.rs`): Uses tree-sitter for parsing TSX/TS/JSX/JS files. `parse_file()` detects language from extension and returns a syntax tree. `is_component_node()` identifies PascalCase function declarations, arrow functions, and class declarations as React components.
 
 **Tailwind class extraction**: Both Tailwind rules detect classes from `className=`, `class=`, and utility function calls (`cn()`, `clsx()`, `classNames()`, `cva()`, `twMerge()`). They skip `dark:`, `hover:`, and `focus:` prefixed classes.
 
@@ -44,6 +54,8 @@ Baseline is a code quality enforcement tool that lints React/TypeScript projects
 - `banned-import`, `banned-pattern`, `required-pattern`, `banned-dependency`, `file-presence`, `ratchet`, `window-pattern`, `tailwind-dark-mode`, `tailwind-theme-tokens`
 
 Each `[[rule]]` has: `id`, `type`, `severity`, `glob`, `message`, `suggest`, plus type-specific fields (`allowed_classes`, `token_map`, `packages`, `pattern`, `max_count`, `exclude_glob`, `file_contains`, `file_not_contains`, `condition_pattern`, etc.).
+
+AST rule types (`max-component-size`, `no-nested-components`, `prefer-use-reducer`, `no-cascading-set-state`) require the `ast` feature flag: `cargo install code-baseline --features ast`.
 
 ## Example Files
 

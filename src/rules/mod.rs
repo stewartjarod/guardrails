@@ -1,3 +1,5 @@
+#[cfg(feature = "ast")]
+pub mod ast;
 pub mod banned_dependency;
 pub mod banned_import;
 pub mod banned_pattern;
