@@ -325,6 +325,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                 glob: Some("**/*.{tsx,jsx}".into()),
                 pattern: Some(r"<img\s".into()),
                 regex: true,
+                skip_strings: true,
                 message: "Use next/image instead of <img> for automatic optimization".into(),
                 suggest: Some("Import Image from 'next/image' and use <Image> component".into()),
                 ..Default::default()
@@ -369,6 +370,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                 glob: Some("**/*.{tsx,jsx}".into()),
                 pattern: Some(r#"<a\s+href=["']/"#.into()),
                 regex: true,
+                skip_strings: true,
                 message: "Use next/link instead of <a> for client-side navigation".into(),
                 suggest: Some("Import Link from 'next/link' and use <Link> component".into()),
                 ..Default::default()
@@ -389,6 +391,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                 glob: Some("**/*.{tsx,jsx}".into()),
                 pattern: Some(r"<script\s".into()),
                 regex: true,
+                skip_strings: true,
                 message: "Use next/script instead of <script> for optimized script loading".into(),
                 suggest: Some("Import Script from 'next/script' and use <Script> component".into()),
                 ..Default::default()
@@ -400,6 +403,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                 glob: Some("**/*.{tsx,jsx}".into()),
                 pattern: Some(r"<link[^>]*fonts\.googleapis\.com".into()),
                 regex: true,
+                skip_strings: true,
                 message: "Use next/font instead of Google Fonts <link> for zero layout shift".into(),
                 suggest: Some("Import from 'next/font/google' for automatic font optimization".into()),
                 ..Default::default()
@@ -611,6 +615,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     glob: Some("**/*.{tsx,jsx}".into()),
                     pattern: Some(r"<img\s".into()),
                     regex: true,
+                    skip_strings: true,
                     exclude_glob: vec!["**/opengraph-image.*".into(), "**/og/**".into()],
                     message: "Use next/image instead of <img> for automatic optimization".into(),
                     suggest: Some("Import Image from 'next/image' and use <Image> component".into()),
@@ -637,6 +642,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     glob: Some("**/*.{tsx,jsx}".into()),
                     pattern: Some(r#"<a\s+href=["']/"#.into()),
                     regex: true,
+                    skip_strings: true,
                     message: "Use next/link instead of <a> for client-side navigation".into(),
                     suggest: Some("Import Link from 'next/link' and use <Link> component".into()),
                     ..Default::default()
@@ -678,6 +684,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     glob: Some("**/*.{tsx,jsx}".into()),
                     pattern: Some(r"<script\s".into()),
                     regex: true,
+                    skip_strings: true,
                     message: "Use next/script instead of <script> for optimized script loading".into(),
                     suggest: Some("Import Script from 'next/script' and use <Script> component".into()),
                     ..Default::default()
@@ -689,6 +696,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     glob: Some("**/*.{tsx,jsx}".into()),
                     pattern: Some(r"<link[^>]*fonts\.googleapis\.com".into()),
                     regex: true,
+                    skip_strings: true,
                     message: "Use next/font instead of Google Fonts <link> for zero layout shift".into(),
                     suggest: Some("Import from 'next/font/google' for automatic font optimization".into()),
                     ..Default::default()
@@ -700,6 +708,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     glob: Some("**/*.{tsx,jsx}".into()),
                     pattern: Some(r#"<link[^>]*rel=["']stylesheet["']"#.into()),
                     regex: true,
+                    skip_strings: true,
                     message: "Import CSS files directly instead of using <link rel=\"stylesheet\">".into(),
                     suggest: Some("Use import './styles.css' for automatic bundling and optimization".into()),
                     ..Default::default()
