@@ -52,6 +52,12 @@ pub fn build_rule(rule_type: &str, config: &RuleConfig) -> Result<Box<dyn Rule>,
 "prefer-use-reducer" => Ok(Box::new(ast::PreferUseReducerRule::new(config)?)),
 "no-cascading-set-state" => Ok(Box::new(ast::NoCascadingSetStateRule::new(config)?)),
 "require-img-alt" => Ok(Box::new(ast::RequireImgAltRule::new(config)?)),
+"no-outline-none" => Ok(Box::new(ast::NoOutlineNoneRule::new(config)?)),
+"no-div-click-handler" => Ok(Box::new(ast::NoDivClickHandlerRule::new(config)?)),
+"no-span-click-handler" => Ok(Box::new(ast::NoSpanClickHandlerRule::new(config)?)),
+"no-derived-state-effect" => Ok(Box::new(ast::NoDerivedStateEffectRule::new(config)?)),
+"no-regexp-in-render" => Ok(Box::new(ast::NoRegexpInRenderRule::new(config)?)),
+"no-object-dep-array" => Ok(Box::new(ast::NoObjectDepArrayRule::new(config)?)),
         _ => Err(FactoryError::UnknownRuleType(rule_type.to_string())),
     }
 }

@@ -128,13 +128,15 @@ Available presets:
 |---|---|---|
 | `shadcn-strict` | 5 | Dark mode enforcement (error), theme tokens (error), no inline styles, no CSS-in-JS, no competing frameworks |
 | `shadcn-migrate` | 2 | Dark mode enforcement (error), theme tokens (warning) — softer, for gradual migration |
-| `ai-safety` | 3 | Bans deprecated packages: moment, lodash, request |
+| `dependency-hygiene` | 3 | Bans deprecated packages: moment, lodash, request. (Alias: `ai-safety`) |
 | `security` | 11 | No .env files, no hardcoded secrets, no eval, no dangerouslySetInnerHTML, no innerHTML, no document.write, no wildcard postMessage, no outerHTML, no http:// URLs, no console.log, no paste prevention |
 | `nextjs` | 8 | Use next/image, next/link, next/font, next/script; no next/head or next/router in App Router; no private env vars in client components; require 'use client' for hooks |
 | `ai-codegen` | 12 | No placeholder text, no TODOs, no `any` type, no empty catch, no console.log, no @ts-ignore, no `as any`, no eslint-disable, no @ts-nocheck, no var, no require in TS, no non-null assertions |
-| `react` | 35 | Correctness (index keys, zero-render, nested components), security, bundle size (barrel imports, deprecated packages), rendering performance, state/effects best practices, React 19 patterns |
+| `react` | 18 | Correctness rules: index keys, zero-render, nested components, dangerous HTML, derived state effects, object dep arrays, default object props, unsafe createContext, fetch in effect, lazy state init, cascading setState, component size, useReducer preference |
+| `react-opinions` | 12 | Style/perf/bundle rules: barrel imports (lodash, lucide, MUI, react-icons, date-fns), deprecated packages (moment), transition-all, layout animation, sequential await, regexp in render |
+| `react-19` | 2 | React 19-specific: no forwardRef (use ref prop), no useContext (use use()) |
 | `nextjs-best-practices` | 21 | Images, routing, scripts/fonts, server/client boundary, SEO metadata, server actions (auth + validation), hydration, component size, nested components |
-| `accessibility` | 9 | No div/span click handlers, no outline-none, no user-scalable=no, no unrestricted autoFocus, no transition-all, no hardcoded date formats, no onclick navigation, require img alt |
+| `accessibility` | 9 | AST-powered: div/span click handlers without role, outline-none without focus-visible ring, no user-scalable=no, no unrestricted autoFocus, no transition-all, no hardcoded date formats, no onclick navigation, require img alt |
 | `react-native` | 13 | No deprecated Touchable*, no legacy shadows, use expo-image, no custom headers, no useFonts/loadAsync, no inline Intl formatters, use native navigators, no JS bottom sheet |
 
 ### Plugins
@@ -468,6 +470,76 @@ message = "img element must have an alt attribute for screen readers"
 suggest = "Add alt=\"description\" or alt=\"\" for decorative images"
 ```
 
+#### `no-outline-none` — Require focus-visible ring with outline removal
+
+Flags `outline-none` or `outline-0` in JSX class attributes when there's no companion `focus-visible:ring*` or `focus-visible:outline*` class. Works with `cn()`, `clsx()`, and other utility functions.
+
+```toml
+[[rule]]
+id = "no-outline-none"
+type = "no-outline-none"
+severity = "warning"
+glob = "**/*.{tsx,jsx}"
+message = "outline-none without focus-visible ring hides keyboard focus"
+suggest = "Add focus-visible:ring-2 or focus-visible:outline-2"
+```
+
+#### `no-div-click-handler` / `no-span-click-handler` — Accessible click handlers
+
+Flags `<div>` or `<span>` elements with `onClick` that are missing a `role` attribute. Interactive elements need proper ARIA roles for screen readers.
+
+```toml
+[[rule]]
+id = "no-div-click-handler"
+type = "no-div-click-handler"
+severity = "warning"
+glob = "**/*.{tsx,jsx}"
+message = "div with onClick needs role attribute for accessibility"
+suggest = "Add role=\"button\" or use a <button> element"
+```
+
+#### `no-derived-state-effect` — No derived state in useEffect
+
+Flags `useEffect` callbacks whose body contains only `set*()` calls — a pattern that should be replaced with derived state (computed during render) or `useMemo`.
+
+```toml
+[[rule]]
+id = "no-derived-state-effect"
+type = "no-derived-state-effect"
+severity = "warning"
+glob = "**/*.{tsx,jsx}"
+message = "useEffect that only calls setState is derived state — compute during render"
+suggest = "Use useMemo or compute the value directly"
+```
+
+#### `no-regexp-in-render` — No RegExp construction in render
+
+Flags `new RegExp()` calls inside React component function bodies. RegExp compilation on every render is wasteful — move to module scope or wrap in `useMemo`.
+
+```toml
+[[rule]]
+id = "no-regexp-in-render"
+type = "no-regexp-in-render"
+severity = "warning"
+glob = "**/*.{tsx,jsx}"
+message = "new RegExp() in component body re-compiles every render"
+suggest = "Move to module scope or useMemo"
+```
+
+#### `no-object-dep-array` — No object/array literals in dependency arrays
+
+Flags object (`{}`) or array (`[]`) literals inside `useEffect`, `useMemo`, or `useCallback` dependency arrays. Literals create new references every render, defeating memoization.
+
+```toml
+[[rule]]
+id = "no-object-dep-array"
+type = "no-object-dep-array"
+severity = "warning"
+glob = "**/*.{tsx,jsx}"
+message = "Object/array literal in dependency array creates new reference every render"
+suggest = "Extract to useMemo or a ref"
+```
+
 ---
 
 ### `window-pattern` — Enforce proximity between patterns
@@ -795,9 +867,14 @@ src/
     └── ast/
         ├── mod.rs                  AST infrastructure (tree-sitter parsing, component detection)
         ├── max_component_size.rs   Component line count enforcement
-        ├── no_nested_components.rs Nested component definition detection
-        ├── prefer_use_reducer.rs   Excessive useState detection
         ├── no_cascading_set_state.rs Cascading setState in useEffect detection
+        ├── no_click_handler.rs     Div/span onClick without role detection
+        ├── no_derived_state_effect.rs Derived state in useEffect detection
+        ├── no_nested_components.rs Nested component definition detection
+        ├── no_object_dep_array.rs  Object/array literals in dep arrays
+        ├── no_outline_none.rs      outline-none without focus-visible ring
+        ├── no_regexp_in_render.rs  RegExp construction in render detection
+        ├── prefer_use_reducer.rs   Excessive useState detection
         └── require_img_alt.rs      Missing img alt attribute detection
 
 examples/

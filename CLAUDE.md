@@ -35,18 +35,23 @@ Baseline is a code quality enforcement tool that lints React/TypeScript projects
 - `TailwindDarkModeRule` — ensures hardcoded Tailwind color classes have `dark:` variants
 - `TailwindThemeTokensRule` — bans raw Tailwind color classes, suggests semantic tokens (~130+ default mappings)
 
-**Five AST rule types** (in `src/rules/ast/`):
+**Eleven AST rule types** (in `src/rules/ast/`):
 - `MaxComponentSizeRule` — flags React components exceeding a line count (`max_count`, default 150)
 - `NoNestedComponentsRule` — detects component definitions inside other components
 - `PreferUseReducerRule` — flags components with too many `useState` calls (`max_count`, default 4)
 - `NoCascadingSetStateRule` — flags `useEffect` callbacks with too many `set*` calls (`max_count`, default 3)
 - `RequireImgAltRule` — flags `<img>` elements missing an `alt` attribute
+- `NoOutlineNoneRule` — flags `outline-none`/`outline-0` without companion `focus-visible:ring*` class
+- `NoDivClickHandlerRule` / `NoSpanClickHandlerRule` — flags div/span with `onClick` missing a `role` attribute
+- `NoDerivedStateEffectRule` — flags `useEffect` callbacks that only call `set*()` (derived state)
+- `NoRegexpInRenderRule` — flags `new RegExp()` inside component bodies (not in useMemo/useCallback)
+- `NoObjectDepArrayRule` — flags object/array literals in hook dependency arrays
 
 **AST infrastructure** (`src/rules/ast/mod.rs`): Uses tree-sitter for parsing TSX/TS/JSX/JS files. `parse_file()` detects language from extension and returns a syntax tree. `is_component_node()` identifies PascalCase function declarations, arrow functions, and class declarations as React components.
 
 **Tailwind class extraction**: Both Tailwind rules detect classes from `className=`, `class=`, and utility function calls (`cn()`, `clsx()`, `classNames()`, `cva()`, `twMerge()`). They skip `dark:`, `hover:`, and `focus:` prefixed classes.
 
-**Ten built-in presets** (`src/presets.rs`): `shadcn-strict`, `shadcn-migrate`, `ai-safety`, `security`, `nextjs`, `ai-codegen`, `react`, `nextjs-best-practices`, `accessibility`, `react-native`.
+**Twelve built-in presets** (`src/presets.rs`): `shadcn-strict`, `shadcn-migrate`, `dependency-hygiene` (alias: `ai-safety`), `security`, `nextjs`, `ai-codegen`, `react` (18 correctness rules), `react-opinions` (12 style/perf rules), `react-19` (2 React 19-specific rules), `nextjs-best-practices`, `accessibility`, `react-native`.
 
 ## Configuration
 
@@ -55,7 +60,7 @@ Baseline is a code quality enforcement tool that lints React/TypeScript projects
 
 Each `[[rule]]` has: `id`, `type`, `severity`, `glob`, `message`, `suggest`, plus type-specific fields (`allowed_classes`, `token_map`, `packages`, `pattern`, `max_count`, `exclude_glob`, `file_contains`, `file_not_contains`, `condition_pattern`, etc.).
 
-AST rule types: `max-component-size`, `no-nested-components`, `prefer-use-reducer`, `no-cascading-set-state`, `require-img-alt`.
+AST rule types: `max-component-size`, `no-nested-components`, `prefer-use-reducer`, `no-cascading-set-state`, `require-img-alt`, `no-outline-none`, `no-div-click-handler`, `no-span-click-handler`, `no-derived-state-effect`, `no-regexp-in-render`, `no-object-dep-array`.
 
 ## Example Files
 

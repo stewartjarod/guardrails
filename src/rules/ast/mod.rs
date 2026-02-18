@@ -1,12 +1,22 @@
 pub mod max_component_size;
 pub mod no_cascading_set_state;
+pub mod no_click_handler;
+pub mod no_derived_state_effect;
 pub mod no_nested_components;
+pub mod no_object_dep_array;
+pub mod no_outline_none;
+pub mod no_regexp_in_render;
 pub mod prefer_use_reducer;
 pub mod require_img_alt;
 
 pub use max_component_size::MaxComponentSizeRule;
 pub use no_cascading_set_state::NoCascadingSetStateRule;
+pub use no_click_handler::{NoDivClickHandlerRule, NoSpanClickHandlerRule};
+pub use no_derived_state_effect::NoDerivedStateEffectRule;
 pub use no_nested_components::NoNestedComponentsRule;
+pub use no_object_dep_array::NoObjectDepArrayRule;
+pub use no_outline_none::NoOutlineNoneRule;
+pub use no_regexp_in_render::NoRegexpInRenderRule;
 pub use prefer_use_reducer::PreferUseReducerRule;
 pub use require_img_alt::RequireImgAltRule;
 

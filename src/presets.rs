@@ -31,7 +31,6 @@ impl std::error::Error for PresetError {}
 enum Preset {
     ShadcnStrict,
     ShadcnMigrate,
-    AiSafety,
     Security,
     Nextjs,
     AiCodegen,
@@ -39,6 +38,9 @@ enum Preset {
     NextjsBestPractices,
     Accessibility,
     ReactNative,
+    React19,
+    ReactOpinions,
+    DependencyHygiene,
 }
 
 /// Returns the list of all available preset names.
@@ -46,11 +48,13 @@ pub fn available_presets() -> &'static [&'static str] {
     &[
         "shadcn-strict",
         "shadcn-migrate",
-        "ai-safety",
+        "dependency-hygiene",
         "security",
         "nextjs",
         "ai-codegen",
         "react",
+        "react-opinions",
+        "react-19",
         "nextjs-best-practices",
         "accessibility",
         "react-native",
@@ -61,11 +65,13 @@ fn resolve_preset(name: &str) -> Option<Preset> {
     match name {
         "shadcn-strict" => Some(Preset::ShadcnStrict),
         "shadcn-migrate" => Some(Preset::ShadcnMigrate),
-        "ai-safety" => Some(Preset::AiSafety),
+        "dependency-hygiene" | "ai-safety" => Some(Preset::DependencyHygiene),
         "security" => Some(Preset::Security),
         "nextjs" => Some(Preset::Nextjs),
         "ai-codegen" => Some(Preset::AiCodegen),
         "react" => Some(Preset::React),
+        "react-opinions" => Some(Preset::ReactOpinions),
+        "react-19" => Some(Preset::React19),
         "nextjs-best-practices" => Some(Preset::NextjsBestPractices),
         "accessibility" => Some(Preset::Accessibility),
         "react-native" => Some(Preset::ReactNative),
@@ -158,7 +164,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                 ..Default::default()
             },
         ],
-        Preset::AiSafety => vec![
+        Preset::DependencyHygiene => vec![
             TomlRule {
                 id: "no-moment".into(),
                 rule_type: "banned-dependency".into(),
@@ -205,7 +211,17 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                 severity: "error".into(),
                 pattern: Some(r#"(?i)(?:api_key|apikey|secret_key|secretkey|auth_token|access_token|private_key|password|passwd|secret|client_secret)\s*[:=]\s*["'][a-zA-Z0-9_\-]{8,}"#.into()),
                 regex: true,
-                exclude_glob: vec!["**/*.test.*".into(), "**/*.spec.*".into()],
+                skip_strings: true,
+                exclude_glob: vec![
+                    "**/*.test.*".into(),
+                    "**/*.spec.*".into(),
+                    "**/fixtures/**".into(),
+                    "**/__fixtures__/**".into(),
+                    "**/mocks/**".into(),
+                    "**/__mocks__/**".into(),
+                    "**/*.example.*".into(),
+                    "**/*.mock.*".into(),
+                ],
                 message: "Hardcoded secret detected — use environment variables instead".into(),
                 ..Default::default()
             },
@@ -279,8 +295,15 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                 glob: Some("**/*.{ts,tsx,js,jsx}".into()),
                 pattern: Some(r#"['"]http://"#.into()),
                 regex: true,
-                exclude_glob: vec!["**/*.test.*".into(), "**/*.spec.*".into()],
+                exclude_glob: vec![
+                    "**/*.test.*".into(),
+                    "**/*.spec.*".into(),
+                    "**/*.config.*".into(),
+                    "**/fixtures/**".into(),
+                    "**/__fixtures__/**".into(),
+                ],
                 message: "Insecure http:// URL — use https:// instead".into(),
+                suggest: Some("Use https:// instead (http://localhost is acceptable for local dev)".into()),
                 ..Default::default()
             },
             TomlRule {
@@ -427,31 +450,6 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     message: "dangerouslySetInnerHTML can lead to XSS — sanitize content or use a safe alternative".into(),
                     ..Default::default()
                 },
-                // ── Performance: bundle size ─────────────────────────────
-                TomlRule {
-                    id: "no-full-lodash-import".into(),
-                    rule_type: "banned-import".into(),
-                    severity: "warning".into(),
-                    packages: vec!["lodash".into()],
-                    message: "Importing all of lodash (~70kb) — use lodash-es or per-function imports like lodash/debounce".into(),
-                    ..Default::default()
-                },
-                TomlRule {
-                    id: "no-moment".into(),
-                    rule_type: "banned-import".into(),
-                    severity: "warning".into(),
-                    packages: vec!["moment".into(), "moment-timezone".into()],
-                    message: "moment.js is 300kb+ and deprecated — use date-fns, dayjs, or Temporal API".into(),
-                    ..Default::default()
-                },
-                TomlRule {
-                    id: "no-moment-dep".into(),
-                    rule_type: "banned-dependency".into(),
-                    severity: "warning".into(),
-                    packages: vec!["moment".into(), "moment-timezone".into()],
-                    message: "moment.js is 300kb+ and deprecated — use date-fns, dayjs, or Temporal API".into(),
-                    ..Default::default()
-                },
                 TomlRule {
                     id: "no-new-function".into(),
                     rule_type: "banned-pattern".into(),
@@ -461,50 +459,12 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     message: "new Function() is equivalent to eval() — avoid dynamic code execution".into(),
                     ..Default::default()
                 },
-                // ── Performance: rendering ───────────────────────────────
-                TomlRule {
-                    id: "no-transition-all".into(),
-                    rule_type: "banned-pattern".into(),
-                    severity: "warning".into(),
-                    glob: Some("**/*.{tsx,jsx}".into()),
-                    pattern: Some(r#"transition:\s*["']all"#.into()),
-                    regex: true,
-                    message: "transition: 'all' is expensive — list specific properties to transition".into(),
-                    ..Default::default()
-                },
-                TomlRule {
-                    id: "no-layout-animation".into(),
-                    rule_type: "banned-pattern".into(),
-                    severity: "warning".into(),
-                    glob: Some("**/*.{tsx,jsx,css}".into()),
-                    pattern: Some(r"(?:animation|transition)(?:-property)?:\s*(?:.*\b(?:width|height|top|left|right|bottom|margin|padding)\b)".into()),
-                    regex: true,
-                    message: "Animating layout properties (width/height/margin) triggers expensive reflows — use transform instead".into(),
-                    suggest: Some("Use transform: scale() or translate() for smooth GPU-accelerated animations".into()),
-                    ..Default::default()
-                },
-                // ── Async ─────────────────────────────────────────────────
-                TomlRule {
-                    id: "no-sequential-await".into(),
-                    rule_type: "window-pattern".into(),
-                    severity: "warning".into(),
-                    glob: Some("**/*.{ts,tsx,js,jsx}".into()),
-                    pattern: Some(r"^\s*(?:const\s+\w+\s*=\s*)?await\s".into()),
-                    condition_pattern: Some(r"^\s*(?:const\s+\w+\s*=\s*)?await\s".into()),
-                    max_count: Some(3),
-                    regex: true,
-                    message: "Sequential await statements may run slower than necessary — use Promise.all() for independent operations".into(),
-                    suggest: Some("const [a, b] = await Promise.all([fetchA(), fetchB()])".into()),
-                    ..Default::default()
-                },
                 // ── State & Effects ──────────────────────────────────────
                 TomlRule {
                     id: "no-derived-state-effect".into(),
-                    rule_type: "banned-pattern".into(),
+                    rule_type: "no-derived-state-effect".into(),
                     severity: "warning".into(),
                     glob: Some("**/*.{tsx,jsx}".into()),
-                    pattern: Some(r"useEffect\(\(\)\s*(?:=>)?\s*\{?\s*set[A-Z]\w*\(".into()),
-                    regex: true,
                     message: "useEffect that only calls setState is derived state — compute during render instead".into(),
                     suggest: Some("Replace with: const derived = useMemo(() => compute(dep), [dep])".into()),
                     ..Default::default()
@@ -532,11 +492,9 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                 },
                 TomlRule {
                     id: "no-object-dep-array".into(),
-                    rule_type: "banned-pattern".into(),
+                    rule_type: "no-object-dep-array".into(),
                     severity: "warning".into(),
                     glob: Some("**/*.{tsx,jsx}".into()),
-                    pattern: Some(r"(?:useEffect|useMemo|useCallback)\([^)]+,\s*\[[^\]]*(?:\{[^}]*\}|\[[^\]]*\])".into()),
-                    regex: true,
                     message: "Object/array literal in dependency array creates a new reference every render — extract to useMemo or a ref".into(),
                     ..Default::default()
                 },
@@ -550,30 +508,6 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     message: "Default {} or [] in component params creates a new reference every render — extract to a module-level constant".into(),
                     ..Default::default()
                 },
-                // ── React 19 / composition ───────────────────────────
-                TomlRule {
-                    id: "no-forwardref".into(),
-                    rule_type: "banned-pattern".into(),
-                    severity: "warning".into(),
-                    glob: Some("**/*.{tsx,jsx}".into()),
-                    pattern: Some(r"\bforwardRef\s*[<(]".into()),
-                    regex: true,
-                    message: "forwardRef is unnecessary in React 19 — ref is a regular prop now".into(),
-                    suggest: Some("Accept ref as a prop directly: function Component({ ref, ...props })".into()),
-                    ..Default::default()
-                },
-                TomlRule {
-                    id: "no-use-context".into(),
-                    rule_type: "banned-pattern".into(),
-                    severity: "warning".into(),
-                    glob: Some("**/*.{tsx,jsx}".into()),
-                    pattern: Some(r"\buseContext\s*\(".into()),
-                    regex: true,
-                    message: "useContext is replaced by use() in React 19".into(),
-                    suggest: Some("Replace useContext(MyContext) with use(MyContext)".into()),
-                    ..Default::default()
-                },
-                // ── Correctness ──────────────────────────────────────
                 TomlRule {
                     id: "no-unsafe-createcontext-default".into(),
                     rule_type: "banned-pattern".into(),
@@ -583,17 +517,6 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     regex: true,
                     message: "Unsafe createContext default value — use null and handle the missing-provider case".into(),
                     suggest: Some("Use createContext<T>(null) and throw in a custom hook if context is null".into()),
-                    ..Default::default()
-                },
-                TomlRule {
-                    id: "no-effect-callback-sync".into(),
-                    rule_type: "banned-pattern".into(),
-                    severity: "warning".into(),
-                    glob: Some("**/*.{tsx,jsx}".into()),
-                    pattern: Some(r"useEffect\(\(\)\s*(?:=>)?\s*\{?\s*on[A-Z]\w*\(".into()),
-                    regex: true,
-                    message: "Calling event callbacks directly in useEffect may indicate misuse — effects should synchronize, not fire events".into(),
-                    suggest: Some("Move the callback invocation to a user action handler or derive state instead".into()),
                     ..Default::default()
                 },
                 TomlRule {
@@ -608,17 +531,6 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     ..Default::default()
                 },
                 // ── Bulletproof / SSR safety ───────────────────────────
-                TomlRule {
-                    id: "no-hardcoded-jsx-id".into(),
-                    rule_type: "banned-pattern".into(),
-                    severity: "warning".into(),
-                    glob: Some("**/*.{tsx,jsx}".into()),
-                    pattern: Some(r#"id=["'][^"']+["']"#.into()),
-                    regex: true,
-                    message: "Hardcoded id attribute — multiple instances will share the same ID and clash".into(),
-                    suggest: Some("Use useId() to generate unique, SSR-safe IDs".into()),
-                    ..Default::default()
-                },
                 TomlRule {
                     id: "no-clone-element".into(),
                     rule_type: "banned-pattern".into(),
@@ -641,17 +553,6 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     ..Default::default()
                 },
                 TomlRule {
-                    id: "no-direct-window-listener".into(),
-                    rule_type: "banned-pattern".into(),
-                    severity: "warning".into(),
-                    glob: Some("**/*.{tsx,jsx,ts,js}".into()),
-                    pattern: Some(r"window\.(addEventListener|removeEventListener)".into()),
-                    regex: true,
-                    message: "Direct window reference breaks in iframes, portals, and pop-out windows".into(),
-                    suggest: Some("Use ref.current?.ownerDocument.defaultView to resolve the correct window".into()),
-                    ..Default::default()
-                },
-                TomlRule {
                     id: "no-direct-document-query".into(),
                     rule_type: "banned-pattern".into(),
                     severity: "warning".into(),
@@ -660,68 +561,6 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     regex: true,
                     message: "Direct DOM queries bypass React and break in SSR — use refs instead".into(),
                     suggest: Some("Use useRef() and ref.current for DOM access".into()),
-                    ..Default::default()
-                },
-                // ── Performance / bundle ─────────────────────────────
-                TomlRule {
-                    id: "no-regexp-in-render".into(),
-                    rule_type: "banned-pattern".into(),
-                    severity: "warning".into(),
-                    glob: Some("**/*.{tsx,jsx}".into()),
-                    pattern: Some(r"new\s+RegExp\s*\(".into()),
-                    regex: true,
-                    message: "new RegExp() in a component body re-compiles every render — extract to module scope or useMemo".into(),
-                    suggest: Some("Move the RegExp to module scope: const MY_RE = new RegExp(...)".into()),
-                    ..Default::default()
-                },
-                TomlRule {
-                    id: "no-lucide-barrel".into(),
-                    rule_type: "banned-pattern".into(),
-                    severity: "warning".into(),
-                    pattern: Some(r#"(?:import\s+.*?\s+from\s+|import\s+|require\s*\(\s*)['"]lucide-react['"]"#.into()),
-                    regex: true,
-                    message: "Barrel import from lucide-react pulls in all icons — use lucide-react/icons/IconName".into(),
-                    suggest: Some("Import specific icons: import { Icon } from 'lucide-react/icons/Icon'".into()),
-                    ..Default::default()
-                },
-                TomlRule {
-                    id: "no-mui-barrel".into(),
-                    rule_type: "banned-pattern".into(),
-                    severity: "warning".into(),
-                    pattern: Some(r#"(?:import\s+.*?\s+from\s+|import\s+|require\s*\(\s*)['"]@mui/material['"]"#.into()),
-                    regex: true,
-                    message: "Barrel import from @mui/material increases bundle size — use deep imports".into(),
-                    suggest: Some("Import specific components: import Button from '@mui/material/Button'".into()),
-                    ..Default::default()
-                },
-                TomlRule {
-                    id: "no-mui-icons-barrel".into(),
-                    rule_type: "banned-pattern".into(),
-                    severity: "warning".into(),
-                    pattern: Some(r#"(?:import\s+.*?\s+from\s+|import\s+|require\s*\(\s*)['"]@mui/icons-material['"]"#.into()),
-                    regex: true,
-                    message: "Barrel import from @mui/icons-material increases bundle size — use deep imports".into(),
-                    suggest: Some("Import specific icons: import HomeIcon from '@mui/icons-material/Home'".into()),
-                    ..Default::default()
-                },
-                TomlRule {
-                    id: "no-react-icons-barrel".into(),
-                    rule_type: "banned-pattern".into(),
-                    severity: "warning".into(),
-                    pattern: Some(r#"(?:import\s+.*?\s+from\s+|import\s+|require\s*\(\s*)['"]react-icons['"]"#.into()),
-                    regex: true,
-                    message: "Barrel import from react-icons pulls in all icon sets — import from a specific set".into(),
-                    suggest: Some("Import from a specific set: import { FaHome } from 'react-icons/fa'".into()),
-                    ..Default::default()
-                },
-                TomlRule {
-                    id: "no-date-fns-barrel".into(),
-                    rule_type: "banned-pattern".into(),
-                    severity: "warning".into(),
-                    pattern: Some(r#"(?:import\s+.*?\s+from\s+|import\s+|require\s*\(\s*)['"]date-fns['"]"#.into()),
-                    regex: true,
-                    message: "Barrel import from date-fns increases bundle size — use subpath imports".into(),
-                    suggest: Some("Import specific functions: import { format } from 'date-fns/format'".into()),
                     ..Default::default()
                 },
             ];
@@ -784,7 +623,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     glob: Some("**/*.{tsx,jsx}".into()),
                     pattern: Some(r"<Image[^>]*\bfill\b".into()),
                     condition_pattern: Some(r"\bsizes\s*=".into()),
-                    max_count: Some(3),
+                    max_count: Some(7),
                     regex: true,
                     message: "<Image fill> without sizes attribute downloads unnecessarily large images".into(),
                     suggest: Some("Add sizes prop, e.g. sizes=\"(max-width: 768px) 100vw, 50vw\"".into()),
@@ -957,6 +796,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     severity: "warning".into(),
                     glob: Some("**/*.{tsx,jsx}".into()),
                     pattern: Some("suppressHydrationWarning".into()),
+                    exclude_glob: vec!["**/layout.*".into()],
                     message: "suppressHydrationWarning hides real bugs — fix the mismatch instead".into(),
                     suggest: Some("Use useEffect + state to defer client-only content, or move to a Client Component".into()),
                     ..Default::default()
@@ -1129,33 +969,27 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
             let mut rules = vec![
                 TomlRule {
                     id: "no-div-click-handler".into(),
-                    rule_type: "banned-pattern".into(),
+                    rule_type: "no-div-click-handler".into(),
                     severity: "error".into(),
                     glob: Some("**/*.{tsx,jsx}".into()),
-                    pattern: Some(r"<div[^>]+onClick\s*=".into()),
-                    regex: true,
                     message: "Non-interactive <div> with onClick is not keyboard accessible — use <button> instead".into(),
                     suggest: Some("Replace <div onClick=...> with <button onClick=...>".into()),
                     ..Default::default()
                 },
                 TomlRule {
                     id: "no-span-click-handler".into(),
-                    rule_type: "banned-pattern".into(),
+                    rule_type: "no-span-click-handler".into(),
                     severity: "error".into(),
                     glob: Some("**/*.{tsx,jsx}".into()),
-                    pattern: Some(r"<span[^>]+onClick\s*=".into()),
-                    regex: true,
                     message: "Non-interactive <span> with onClick is not keyboard accessible — use <button> instead".into(),
                     suggest: Some("Replace <span onClick=...> with <button onClick=...>".into()),
                     ..Default::default()
                 },
                 TomlRule {
                     id: "no-outline-none".into(),
-                    rule_type: "banned-pattern".into(),
+                    rule_type: "no-outline-none".into(),
                     severity: "warning".into(),
                     glob: Some("**/*.{tsx,jsx}".into()),
-                    pattern: Some(r"\boutline-none\b".into()),
-                    regex: true,
                     message: "outline-none removes the focus indicator — keyboard users can't see what's focused".into(),
                     suggest: Some("Use focus-visible:outline-none with a custom focus ring instead".into()),
                     ..Default::default()
@@ -1200,8 +1034,8 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     glob: Some("**/*.{ts,tsx,js,jsx}".into()),
                     pattern: Some(r"\.toDateString\(\s*\)|\.toLocaleString\(\s*\)|\.toLocaleDateString\(\s*\)".into()),
                     regex: true,
-                    message: "Date formatting without explicit locale is inconsistent across browsers — pass a locale".into(),
-                    suggest: Some("Pass an explicit locale: .toLocaleDateString('en-US', { ... })".into()),
+                    message: "Date formatting without explicit options is inconsistent across environments".into(),
+                    suggest: Some("Use Intl.DateTimeFormat with explicit options: new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })".into()),
                     ..Default::default()
                 },
                 TomlRule {
@@ -1367,6 +1201,153 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                 ..Default::default()
             },
         ],
+        Preset::React19 => vec![
+            TomlRule {
+                id: "no-forwardref".into(),
+                rule_type: "banned-pattern".into(),
+                severity: "warning".into(),
+                glob: Some("**/*.{tsx,jsx}".into()),
+                pattern: Some(r"\bforwardRef\s*[<(]".into()),
+                regex: true,
+                message: "forwardRef is unnecessary in React 19 — ref is a regular prop now".into(),
+                suggest: Some("Accept ref as a prop directly: function Component({ ref, ...props })".into()),
+                ..Default::default()
+            },
+            TomlRule {
+                id: "no-use-context".into(),
+                rule_type: "banned-pattern".into(),
+                severity: "warning".into(),
+                glob: Some("**/*.{tsx,jsx}".into()),
+                pattern: Some(r"\buseContext\s*\(".into()),
+                regex: true,
+                message: "useContext is replaced by use() in React 19".into(),
+                suggest: Some("Replace useContext(MyContext) with use(MyContext)".into()),
+                ..Default::default()
+            },
+        ],
+        Preset::ReactOpinions => vec![
+            // ── Performance: bundle size ─────────────────────────────
+            TomlRule {
+                id: "no-full-lodash-import".into(),
+                rule_type: "banned-import".into(),
+                severity: "warning".into(),
+                packages: vec!["lodash".into()],
+                message: "Importing all of lodash (~70kb) — use lodash-es or per-function imports like lodash/debounce".into(),
+                ..Default::default()
+            },
+            TomlRule {
+                id: "no-moment".into(),
+                rule_type: "banned-import".into(),
+                severity: "warning".into(),
+                packages: vec!["moment".into(), "moment-timezone".into()],
+                message: "moment.js is 300kb+ and deprecated — use date-fns, dayjs, or Temporal API".into(),
+                ..Default::default()
+            },
+            TomlRule {
+                id: "no-moment-dep".into(),
+                rule_type: "banned-dependency".into(),
+                severity: "warning".into(),
+                packages: vec!["moment".into(), "moment-timezone".into()],
+                message: "moment.js is 300kb+ and deprecated — use date-fns, dayjs, or Temporal API".into(),
+                ..Default::default()
+            },
+            // ── Performance: rendering ───────────────────────────────
+            TomlRule {
+                id: "no-transition-all".into(),
+                rule_type: "banned-pattern".into(),
+                severity: "warning".into(),
+                glob: Some("**/*.{tsx,jsx}".into()),
+                pattern: Some(r#"transition:\s*["']all"#.into()),
+                regex: true,
+                message: "transition: 'all' is expensive — list specific properties to transition".into(),
+                ..Default::default()
+            },
+            TomlRule {
+                id: "no-layout-animation".into(),
+                rule_type: "banned-pattern".into(),
+                severity: "warning".into(),
+                glob: Some("**/*.{tsx,jsx,css}".into()),
+                pattern: Some(r"(?:animation|transition)(?:-property)?:\s*(?:.*\b(?:width|height|top|left|right|bottom|margin|padding)\b)".into()),
+                regex: true,
+                message: "Animating layout properties (width/height/margin) triggers expensive reflows — use transform instead".into(),
+                suggest: Some("Use transform: scale() or translate() for smooth GPU-accelerated animations".into()),
+                ..Default::default()
+            },
+            // ── Async ─────────────────────────────────────────────────
+            TomlRule {
+                id: "no-sequential-await".into(),
+                rule_type: "window-pattern".into(),
+                severity: "warning".into(),
+                glob: Some("**/*.{ts,tsx,js,jsx}".into()),
+                pattern: Some(r"^\s*(?:const\s+\w+\s*=\s*)?await\s".into()),
+                condition_pattern: Some(r"^\s*(?:const\s+\w+\s*=\s*)?await\s".into()),
+                max_count: Some(3),
+                regex: true,
+                message: "Sequential await statements may run slower than necessary — use Promise.all() for independent operations".into(),
+                suggest: Some("const [a, b] = await Promise.all([fetchA(), fetchB()])".into()),
+                ..Default::default()
+            },
+            // ── Performance / bundle ─────────────────────────────
+            TomlRule {
+                id: "no-regexp-in-render".into(),
+                rule_type: "no-regexp-in-render".into(),
+                severity: "warning".into(),
+                glob: Some("**/*.{tsx,jsx}".into()),
+                message: "new RegExp() in a component body re-compiles every render — extract to module scope or useMemo".into(),
+                suggest: Some("Move the RegExp to module scope: const MY_RE = new RegExp(...)".into()),
+                ..Default::default()
+            },
+            TomlRule {
+                id: "no-lucide-barrel".into(),
+                rule_type: "banned-pattern".into(),
+                severity: "warning".into(),
+                pattern: Some(r#"(?:import\s+.*?\s+from\s+|import\s+|require\s*\(\s*)['"]lucide-react['"]"#.into()),
+                regex: true,
+                message: "Barrel import from lucide-react pulls in all icons — use lucide-react/icons/IconName".into(),
+                suggest: Some("Import specific icons: import { Icon } from 'lucide-react/icons/Icon'".into()),
+                ..Default::default()
+            },
+            TomlRule {
+                id: "no-mui-barrel".into(),
+                rule_type: "banned-pattern".into(),
+                severity: "warning".into(),
+                pattern: Some(r#"(?:import\s+.*?\s+from\s+|import\s+|require\s*\(\s*)['"]@mui/material['"]"#.into()),
+                regex: true,
+                message: "Barrel import from @mui/material increases bundle size — use deep imports".into(),
+                suggest: Some("Import specific components: import Button from '@mui/material/Button'".into()),
+                ..Default::default()
+            },
+            TomlRule {
+                id: "no-mui-icons-barrel".into(),
+                rule_type: "banned-pattern".into(),
+                severity: "warning".into(),
+                pattern: Some(r#"(?:import\s+.*?\s+from\s+|import\s+|require\s*\(\s*)['"]@mui/icons-material['"]"#.into()),
+                regex: true,
+                message: "Barrel import from @mui/icons-material increases bundle size — use deep imports".into(),
+                suggest: Some("Import specific icons: import HomeIcon from '@mui/icons-material/Home'".into()),
+                ..Default::default()
+            },
+            TomlRule {
+                id: "no-react-icons-barrel".into(),
+                rule_type: "banned-pattern".into(),
+                severity: "warning".into(),
+                pattern: Some(r#"(?:import\s+.*?\s+from\s+|import\s+|require\s*\(\s*)['"]react-icons['"]"#.into()),
+                regex: true,
+                message: "Barrel import from react-icons pulls in all icon sets — import from a specific set".into(),
+                suggest: Some("Import from a specific set: import { FaHome } from 'react-icons/fa'".into()),
+                ..Default::default()
+            },
+            TomlRule {
+                id: "no-date-fns-barrel".into(),
+                rule_type: "banned-pattern".into(),
+                severity: "warning".into(),
+                pattern: Some(r#"(?:import\s+.*?\s+from\s+|import\s+|require\s*\(\s*)['"]date-fns['"]"#.into()),
+                regex: true,
+                message: "Barrel import from date-fns increases bundle size — use subpath imports".into(),
+                suggest: Some("Import specific functions: import { format } from 'date-fns/format'".into()),
+                ..Default::default()
+            },
+        ],
     }
 }
 
@@ -1519,13 +1500,19 @@ mod tests {
     }
 
     #[test]
-    fn ai_safety_has_three_rules() {
-        let rules = preset_rules(Preset::AiSafety);
+    fn dependency_hygiene_has_three_rules() {
+        let rules = preset_rules(Preset::DependencyHygiene);
         assert_eq!(rules.len(), 3);
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
         assert!(ids.contains(&"no-moment"));
         assert!(ids.contains(&"no-lodash"));
         assert!(ids.contains(&"no-deprecated-request"));
+    }
+
+    #[test]
+    fn ai_safety_resolves_as_alias() {
+        assert!(resolve_preset("ai-safety").is_some());
+        assert!(resolve_preset("dependency-hygiene").is_some());
     }
 
     #[test]
@@ -1664,49 +1651,56 @@ mod tests {
     #[test]
     fn react_has_expected_rule_count() {
         let rules = preset_rules(Preset::React);
-        assert_eq!(rules.len(), 35);
+        assert_eq!(rules.len(), 18);
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
         assert!(ids.contains(&"no-array-index-key"));
         assert!(ids.contains(&"no-conditional-render-zero"));
         assert!(ids.contains(&"no-nested-component-def"));
         assert!(ids.contains(&"no-dangerous-html"));
-        assert!(ids.contains(&"no-full-lodash-import"));
-        assert!(ids.contains(&"no-moment"));
-        assert!(ids.contains(&"no-moment-dep"));
         assert!(ids.contains(&"no-new-function"));
-        assert!(ids.contains(&"no-transition-all"));
-        assert!(ids.contains(&"no-layout-animation"));
-        assert!(ids.contains(&"no-sequential-await"));
         assert!(ids.contains(&"no-derived-state-effect"));
         assert!(ids.contains(&"no-fetch-in-effect"));
         assert!(ids.contains(&"no-lazy-state-init"));
         assert!(ids.contains(&"no-object-dep-array"));
         assert!(ids.contains(&"no-default-object-prop"));
-        // React 19 / composition
-        assert!(ids.contains(&"no-forwardref"));
-        assert!(ids.contains(&"no-use-context"));
-        // Correctness
         assert!(ids.contains(&"no-unsafe-createcontext-default"));
-        assert!(ids.contains(&"no-effect-callback-sync"));
         assert!(ids.contains(&"no-usestate-browser-api"));
-        // Bulletproof / SSR safety
-        assert!(ids.contains(&"no-hardcoded-jsx-id"));
         assert!(ids.contains(&"no-clone-element"));
         assert!(ids.contains(&"no-react-children-api"));
-        assert!(ids.contains(&"no-direct-window-listener"));
         assert!(ids.contains(&"no-direct-document-query"));
-        // Performance / bundle
+        assert!(ids.contains(&"max-component-size"));
+        assert!(ids.contains(&"prefer-use-reducer"));
+        assert!(ids.contains(&"no-cascading-set-state"));
+        let nested_rule = rules.iter().find(|r| r.id == "no-nested-component-def").unwrap();
+        assert_eq!(nested_rule.rule_type, "no-nested-components");
+    }
+
+    #[test]
+    fn react_opinions_has_expected_rule_count() {
+        let rules = preset_rules(Preset::ReactOpinions);
+        assert_eq!(rules.len(), 12);
+        let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
+        assert!(ids.contains(&"no-full-lodash-import"));
+        assert!(ids.contains(&"no-moment"));
+        assert!(ids.contains(&"no-moment-dep"));
+        assert!(ids.contains(&"no-transition-all"));
+        assert!(ids.contains(&"no-layout-animation"));
+        assert!(ids.contains(&"no-sequential-await"));
         assert!(ids.contains(&"no-regexp-in-render"));
         assert!(ids.contains(&"no-lucide-barrel"));
         assert!(ids.contains(&"no-mui-barrel"));
         assert!(ids.contains(&"no-mui-icons-barrel"));
         assert!(ids.contains(&"no-react-icons-barrel"));
         assert!(ids.contains(&"no-date-fns-barrel"));
-        assert!(ids.contains(&"max-component-size"));
-        assert!(ids.contains(&"prefer-use-reducer"));
-        assert!(ids.contains(&"no-cascading-set-state"));
-        let nested_rule = rules.iter().find(|r| r.id == "no-nested-component-def").unwrap();
-        assert_eq!(nested_rule.rule_type, "no-nested-components");
+    }
+
+    #[test]
+    fn react_19_has_two_rules() {
+        let rules = preset_rules(Preset::React19);
+        assert_eq!(rules.len(), 2);
+        let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
+        assert!(ids.contains(&"no-forwardref"));
+        assert!(ids.contains(&"no-use-context"));
     }
 
     #[test]
@@ -2019,7 +2013,7 @@ mod tests {
 
     #[test]
     fn no_forwardref_pattern() {
-        let re = regex_for(Preset::React, "no-forwardref");
+        let re = regex_for(Preset::React19, "no-forwardref");
         assert!(re.is_match("const Input = forwardRef<HTMLInputElement>((props, ref) => {"));
         assert!(re.is_match("const Btn = forwardRef((props, ref) => <button />)"));
         assert!(re.is_match("export default forwardRef(MyComponent)"));
@@ -2030,7 +2024,7 @@ mod tests {
 
     #[test]
     fn no_use_context_pattern() {
-        let re = regex_for(Preset::React, "no-use-context");
+        let re = regex_for(Preset::React19, "no-use-context");
         assert!(re.is_match("const theme = useContext(ThemeContext)"));
         assert!(re.is_match("const val = useContext(Ctx)"));
         // should NOT match
@@ -2055,17 +2049,6 @@ mod tests {
     }
 
     #[test]
-    fn no_effect_callback_sync_pattern() {
-        let re = regex_for(Preset::React, "no-effect-callback-sync");
-        assert!(re.is_match("useEffect(() => { onChange(value)"));
-        assert!(re.is_match("useEffect(() => { onUpdate(data)"));
-        assert!(re.is_match("useEffect(() => onSubmit(form)"));
-        // should NOT match — no on* callback
-        assert!(!re.is_match("useEffect(() => { setCount(1) }"));
-        assert!(!re.is_match("useEffect(() => { fetchData() }"));
-    }
-
-    #[test]
     fn no_usestate_browser_api_pattern() {
         let re = regex_for(Preset::React, "no-usestate-browser-api");
         assert!(re.is_match("useState(localStorage.getItem('key'))"));
@@ -2074,15 +2057,6 @@ mod tests {
         assert!(re.is_match("useState(JSON.parse(sessionStorage.getItem('key')))"));
         // lazy initializer is fine
         assert!(!re.is_match("useState(() => localStorage.getItem('key'))"));
-    }
-
-    #[test]
-    fn no_hardcoded_jsx_id_pattern() {
-        let re = regex_for(Preset::React, "no-hardcoded-jsx-id");
-        assert!(re.is_match(r#"<div id="theme">"#));
-        assert!(re.is_match(r#"<input id='modal'/>"#));
-        // dynamic ids are fine
-        assert!(!re.is_match(r#"<div id={id}>"#));
     }
 
     #[test]
@@ -2102,14 +2076,6 @@ mod tests {
     }
 
     #[test]
-    fn no_direct_window_listener_pattern() {
-        let re = regex_for(Preset::React, "no-direct-window-listener");
-        assert!(re.is_match("window.addEventListener('keydown',"));
-        assert!(re.is_match("window.removeEventListener('resize',"));
-        assert!(!re.is_match("win.addEventListener('keydown',"));
-    }
-
-    #[test]
     fn no_direct_document_query_pattern() {
         let re = regex_for(Preset::React, "no-direct-document-query");
         assert!(re.is_match("document.getElementById('root')"));
@@ -2119,17 +2085,16 @@ mod tests {
     }
 
     #[test]
-    fn no_regexp_in_render_pattern() {
-        let re = regex_for(Preset::React, "no-regexp-in-render");
-        assert!(re.is_match("const re = new RegExp(pattern)"));
-        assert!(re.is_match("new RegExp('\\\\d+', 'g')"));
-        // regex literal is fine (not new RegExp)
-        assert!(!re.is_match("const re = /\\d+/g"));
+    fn no_regexp_in_render_is_ast_rule() {
+        let rules = preset_rules(Preset::ReactOpinions);
+        let rule = rules.iter().find(|r| r.id == "no-regexp-in-render").unwrap();
+        assert_eq!(rule.rule_type, "no-regexp-in-render");
+        assert!(rule.pattern.is_none());
     }
 
     #[test]
     fn no_lucide_barrel_pattern() {
-        let re = regex_for(Preset::React, "no-lucide-barrel");
+        let re = regex_for(Preset::ReactOpinions, "no-lucide-barrel");
         // barrel imports should match
         assert!(re.is_match("import { Home } from 'lucide-react'"));
         assert!(re.is_match(r#"import { Home } from "lucide-react""#));
@@ -2141,7 +2106,7 @@ mod tests {
 
     #[test]
     fn no_mui_barrel_pattern() {
-        let re = regex_for(Preset::React, "no-mui-barrel");
+        let re = regex_for(Preset::ReactOpinions, "no-mui-barrel");
         assert!(re.is_match("import { Button } from '@mui/material'"));
         assert!(re.is_match("require('@mui/material')"));
         // deep imports should NOT match
@@ -2151,7 +2116,7 @@ mod tests {
 
     #[test]
     fn no_mui_icons_barrel_pattern() {
-        let re = regex_for(Preset::React, "no-mui-icons-barrel");
+        let re = regex_for(Preset::ReactOpinions, "no-mui-icons-barrel");
         assert!(re.is_match("import { Home } from '@mui/icons-material'"));
         // deep import is fine
         assert!(!re.is_match("import HomeIcon from '@mui/icons-material/Home'"));
@@ -2159,7 +2124,7 @@ mod tests {
 
     #[test]
     fn no_react_icons_barrel_pattern() {
-        let re = regex_for(Preset::React, "no-react-icons-barrel");
+        let re = regex_for(Preset::ReactOpinions, "no-react-icons-barrel");
         assert!(re.is_match("import { FaHome } from 'react-icons'"));
         // subpath import is fine
         assert!(!re.is_match("import { FaHome } from 'react-icons/fa'"));
@@ -2167,7 +2132,7 @@ mod tests {
 
     #[test]
     fn no_date_fns_barrel_pattern() {
-        let re = regex_for(Preset::React, "no-date-fns-barrel");
+        let re = regex_for(Preset::ReactOpinions, "no-date-fns-barrel");
         assert!(re.is_match("import { format } from 'date-fns'"));
         assert!(re.is_match("require('date-fns')"));
         // subpath import is fine
@@ -2237,37 +2202,28 @@ mod tests {
     // ── Accessibility pattern tests ─────────────────────────────────
 
     #[test]
-    fn no_div_click_handler_pattern() {
-        let re = regex_for(Preset::Accessibility, "no-div-click-handler");
-        assert!(re.is_match("<div className='card' onClick={handleClick}>"));
-        assert!(re.is_match("<div onClick = {fn}>"));
-        // button is fine
-        assert!(!re.is_match("<button onClick={handleClick}>"));
-        // closing tag
-        assert!(!re.is_match("</div>"));
-        // div without onClick
-        assert!(!re.is_match("<div className='card'>"));
+    fn no_div_click_handler_is_ast_rule() {
+        let rules = preset_rules(Preset::Accessibility);
+        let rule = rules.iter().find(|r| r.id == "no-div-click-handler").unwrap();
+        assert_eq!(rule.rule_type, "no-div-click-handler");
+        assert!(rule.pattern.is_none());
     }
 
     #[test]
-    fn no_span_click_handler_pattern() {
-        let re = regex_for(Preset::Accessibility, "no-span-click-handler");
-        assert!(re.is_match("<span role='button' onClick={handleClick}>"));
-        assert!(re.is_match("<span onClick={fn}>"));
-        // button is fine
-        assert!(!re.is_match("<button onClick={handleClick}>"));
-        // span without onClick
-        assert!(!re.is_match("<span className='label'>"));
+    fn no_span_click_handler_is_ast_rule() {
+        let rules = preset_rules(Preset::Accessibility);
+        let rule = rules.iter().find(|r| r.id == "no-span-click-handler").unwrap();
+        assert_eq!(rule.rule_type, "no-span-click-handler");
+        assert!(rule.pattern.is_none());
     }
 
     #[test]
-    fn no_outline_none_pattern() {
-        let re = regex_for(Preset::Accessibility, "no-outline-none");
-        assert!(re.is_match("className='outline-none'"));
-        assert!(re.is_match("className='focus:outline-none ring-2'"));
-        // should NOT match outline-offset or outline-0
-        assert!(!re.is_match("className='outline-offset-2'"));
-        assert!(!re.is_match("className='outline-0'"));
+    fn no_outline_none_is_ast_rule() {
+        let rules = preset_rules(Preset::Accessibility);
+        let rule = rules.iter().find(|r| r.id == "no-outline-none").unwrap();
+        assert_eq!(rule.rule_type, "no-outline-none");
+        // AST rule — no pattern field
+        assert!(rule.pattern.is_none());
     }
 
     #[test]
