@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.4.0] - 2026-02-17
+
+### Features
+- add `skip_strings` to BannedPatternRule: ignore matches inside string literals and template strings using tree-sitter (requires `ast` feature) (6845d84)
+- skip minified/bundled files automatically (lines exceeding 500 chars) (6845d84)
+- scoped presets support `exclude_rules` to skip specific rules (6845d84)
+
 ## [v1.3.0] - 2026-02-17
 
 ### Features
