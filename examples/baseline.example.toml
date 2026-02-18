@@ -40,6 +40,12 @@ exclude = [
 # [[baseline.scoped]]
 # preset = "react-native"
 # path = "apps/mobile"
+#
+# Exclude specific rules from a scoped preset:
+# [[baseline.scoped]]
+# preset = "nextjs"
+# path = "apps/web"
+# exclude_rules = ["no-private-env-client", "no-sync-scripts"]
 
 
 # ══════════════════════════════════════════════
@@ -233,6 +239,7 @@ message = "Competing CSS framework detected — this project uses Tailwind"
 # regex = true
 # glob = "src/**/*.{ts,tsx}"
 # file_contains = "'use client'"
+# skip_strings = true   # ignore matches inside string literals (requires `ast` feature)
 # message = "Do not access private env vars in client components"
 
 # [[rule]]

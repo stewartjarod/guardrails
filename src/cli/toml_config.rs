@@ -14,6 +14,8 @@ pub struct TomlConfig {
 pub struct ScopedPreset {
     pub preset: String,
     pub path: String,
+    #[serde(default)]
+    pub exclude_rules: Vec<String>,
 }
 
 /// The `[baseline]` section.
@@ -67,6 +69,8 @@ pub struct TomlRule {
     #[serde(default)]
     pub forbidden_files: Vec<String>,
     pub condition_pattern: Option<String>,
+    #[serde(default)]
+    pub skip_strings: bool,
 }
 
 fn default_severity() -> String {
@@ -95,6 +99,7 @@ impl Default for TomlRule {
             required_files: Vec::new(),
             forbidden_files: Vec::new(),
             condition_pattern: None,
+            skip_strings: false,
         }
     }
 }
@@ -126,6 +131,7 @@ impl TomlRule {
             required_files: self.required_files.clone(),
             forbidden_files: self.forbidden_files.clone(),
             condition_pattern: self.condition_pattern.clone(),
+            skip_strings: self.skip_strings,
         }
     }
 }

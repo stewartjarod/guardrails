@@ -15,6 +15,15 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
+/// Detect minified/bundled files by checking for extremely long lines.
+/// Normal source code rarely exceeds 500 chars per line; minified code
+/// routinely has lines of 10K+ chars.
+const MINIFIED_LINE_LENGTH_THRESHOLD: usize = 500;
+
+fn is_likely_minified(content: &str) -> bool {
+    content.lines().any(|line| line.len() > MINIFIED_LINE_LENGTH_THRESHOLD)
+}
+
 /// A plugin config file containing additional rules.
 #[derive(Debug, serde::Deserialize)]
 struct PluginConfig {
@@ -352,6 +361,9 @@ pub fn run_scan(config_path: &Path, target_paths: &[PathBuf]) -> Result<ScanResu
             }
 
             let content = fs::read_to_string(file_path).ok()?;
+            if is_likely_minified(&content) {
+                return None;
+            }
 
             files_scanned.fetch_add(1, Ordering::Relaxed);
             let file_violations = run_rules_on_content(
@@ -450,6 +462,17 @@ pub fn run_scan_stdin(
 
     let built = build_rules(&resolved_rules)?;
     let rules_loaded: usize = built.rule_groups.iter().map(|g| g.rules.len()).sum();
+
+    if is_likely_minified(content) {
+        return Ok(ScanResult {
+            violations: vec![],
+            files_scanned: 0,
+            rules_loaded,
+            ratchet_counts: HashMap::new(),
+            changed_files_count: None,
+            base_ref: None,
+        });
+    }
 
     let file_path = PathBuf::from(filename);
     let file_str = file_path.to_string_lossy();
@@ -565,6 +588,9 @@ pub fn run_baseline(
         .par_iter()
         .filter_map(|file_path| {
             let content = fs::read_to_string(file_path).ok()?;
+            if is_likely_minified(&content) {
+                return None;
+            }
 
             files_scanned.fetch_add(1, Ordering::Relaxed);
             let ctx = ScanContext {
@@ -1937,6 +1963,104 @@ plugins = ["{}"]
 
         let result = run_scan(&config, &[src_dir]).unwrap();
         assert!(result.violations.iter().any(|v| v.rule_id == "no-todo"));
+    }
+
+    // ── is_likely_minified tests ──
+
+    #[test]
+    fn minified_empty_content() {
+        assert!(!is_likely_minified(""));
+    }
+
+    #[test]
+    fn minified_normal_source() {
+        let content = "const x = 1;\nconst y = 2;\nfunction foo() { return x + y; }\n";
+        assert!(!is_likely_minified(content));
+    }
+
+    #[test]
+    fn minified_single_long_line() {
+        let long_line = "a".repeat(MINIFIED_LINE_LENGTH_THRESHOLD + 1);
+        assert!(is_likely_minified(&long_line));
+    }
+
+    #[test]
+    fn minified_mixed_with_one_long_line() {
+        let mut content = "const x = 1;\n".to_string();
+        content.push_str(&"a".repeat(MINIFIED_LINE_LENGTH_THRESHOLD + 1));
+        content.push_str("\nconst y = 2;\n");
+        assert!(is_likely_minified(&content));
+    }
+
+    #[test]
+    fn minified_exactly_at_threshold() {
+        let line = "a".repeat(MINIFIED_LINE_LENGTH_THRESHOLD);
+        assert!(!is_likely_minified(&line));
+    }
+
+    // ── run_scan skips minified files ──
+
+    #[test]
+    fn run_scan_skips_minified_file() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let config = dir.path().join("baseline.toml");
+        fs::write(
+            &config,
+            r#"
+[baseline]
+
+[[rule]]
+id = "no-console"
+type = "banned-pattern"
+severity = "error"
+pattern = "console\\.log"
+regex = true
+message = "no console.log"
+"#,
+        )
+        .unwrap();
+
+        let src_dir = dir.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+        // Write a minified file containing the banned pattern
+        let mut minified = "console.log('hi');".to_string();
+        minified.push_str(&"x".repeat(MINIFIED_LINE_LENGTH_THRESHOLD + 1));
+        minified.push('\n');
+        fs::write(src_dir.join("bundle.js"), &minified).unwrap();
+
+        let result = run_scan(&config, &[src_dir]).unwrap();
+        assert!(result.violations.is_empty());
+        assert_eq!(result.files_scanned, 0);
+    }
+
+    #[test]
+    fn run_scan_stdin_skips_minified() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let config = dir.path().join("baseline.toml");
+        fs::write(
+            &config,
+            r#"
+[baseline]
+
+[[rule]]
+id = "no-console"
+type = "banned-pattern"
+severity = "error"
+pattern = "console\\.log"
+regex = true
+message = "no console.log"
+"#,
+        )
+        .unwrap();
+
+        let mut minified = "console.log('hi');".to_string();
+        minified.push_str(&"x".repeat(MINIFIED_LINE_LENGTH_THRESHOLD + 1));
+
+        let result = run_scan_stdin(&config, &minified, "bundle.js").unwrap();
+        assert!(result.violations.is_empty());
+        assert_eq!(result.files_scanned, 0);
     }
 
     #[test]

@@ -39,6 +39,8 @@ pub struct RuleConfig {
     pub forbidden_files: Vec<String>,
     /// Condition pattern: only enforce required-pattern if this pattern is present.
     pub condition_pattern: Option<String>,
+    /// When true, skip matches that fall inside string literals (requires `ast` feature).
+    pub skip_strings: bool,
 }
 
 impl Default for RuleConfig {
@@ -62,6 +64,7 @@ impl Default for RuleConfig {
             required_files: Vec::new(),
             forbidden_files: Vec::new(),
             condition_pattern: None,
+            skip_strings: false,
         }
     }
 }

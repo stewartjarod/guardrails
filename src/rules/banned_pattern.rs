@@ -1,6 +1,8 @@
 use crate::config::{RuleConfig, Severity};
 use crate::rules::{Rule, RuleBuildError, ScanContext, Violation};
 use regex::Regex;
+#[cfg(feature = "ast")]
+use std::ops::Range;
 
 /// Scans files line-by-line for a literal string or regex match.
 ///
@@ -15,6 +17,8 @@ pub struct BannedPatternRule {
     glob: Option<String>,
     pattern: String,
     compiled_regex: Option<Regex>,
+    #[cfg_attr(not(feature = "ast"), allow(dead_code))]
+    skip_strings: bool,
 }
 
 impl BannedPatternRule {
@@ -42,6 +46,7 @@ impl BannedPatternRule {
             glob: config.glob.clone(),
             pattern,
             compiled_regex,
+            skip_strings: config.skip_strings,
         })
     }
 }
@@ -61,6 +66,15 @@ impl Rule for BannedPatternRule {
 
     fn check_file(&self, ctx: &ScanContext) -> Vec<Violation> {
         let mut violations = Vec::new();
+
+        #[cfg(feature = "ast")]
+        let line_offsets: Vec<usize> = if self.skip_strings {
+            std::iter::once(0)
+                .chain(ctx.content.match_indices('\n').map(|(i, _)| i + 1))
+                .collect()
+        } else {
+            Vec::new()
+        };
 
         for (line_idx, line) in ctx.content.lines().enumerate() {
             if let Some(ref re) = self.compiled_regex {
@@ -101,7 +115,52 @@ impl Rule for BannedPatternRule {
             }
         }
 
+        #[cfg(feature = "ast")]
+        if self.skip_strings {
+            if let Some(tree) = crate::rules::ast::parse_file(ctx.file_path, ctx.content) {
+                let string_ranges = collect_string_ranges(&tree, ctx.content);
+                violations.retain(|v| {
+                    let byte_offset = match (v.line, v.column) {
+                        (Some(line), Some(col)) => line_offsets[line - 1] + (col - 1),
+                        _ => return true,
+                    };
+                    !string_ranges
+                        .iter()
+                        .any(|range: &Range<usize>| range.contains(&byte_offset))
+                });
+            }
+        }
+
         violations
+    }
+}
+
+/// Walk the tree-sitter AST and collect byte ranges of `string` and `template_string` nodes.
+#[cfg(feature = "ast")]
+fn collect_string_ranges(tree: &tree_sitter::Tree, _source: &str) -> Vec<Range<usize>> {
+    let mut ranges = Vec::new();
+    let mut cursor = tree.walk();
+    collect_string_ranges_recursive(&mut cursor, &mut ranges);
+    ranges
+}
+
+#[cfg(feature = "ast")]
+fn collect_string_ranges_recursive(
+    cursor: &mut tree_sitter::TreeCursor,
+    ranges: &mut Vec<Range<usize>>,
+) {
+    loop {
+        let node = cursor.node();
+        let kind = node.kind();
+        if kind == "string" || kind == "template_string" {
+            ranges.push(node.start_byte()..node.end_byte());
+        } else if cursor.goto_first_child() {
+            collect_string_ranges_recursive(cursor, ranges);
+            cursor.goto_parent();
+        }
+        if !cursor.goto_next_sibling() {
+            break;
+        }
     }
 }
 
@@ -224,5 +283,74 @@ mod tests {
         assert_eq!(violations[0].message, "banned pattern found");
         assert_eq!(violations[0].suggest.as_deref(), Some("remove this pattern"));
         assert!(violations[0].source_line.is_some());
+    }
+
+    #[cfg(feature = "ast")]
+    mod skip_strings {
+        use super::*;
+
+        fn make_skip_config(pattern: &str, regex: bool, skip_strings: bool) -> RuleConfig {
+            RuleConfig {
+                id: "test-skip-strings".into(),
+                severity: Severity::Warning,
+                message: "banned pattern found".into(),
+                pattern: Some(pattern.to_string()),
+                regex,
+                skip_strings,
+                ..Default::default()
+            }
+        }
+
+        #[test]
+        fn skip_strings_inside_template_literal() {
+            let config = make_skip_config("process.env", false, true);
+            let rule = BannedPatternRule::new(&config).unwrap();
+            let content = "const docs = `Use process.env.SECRET for config`;";
+            let ctx = ScanContext {
+                file_path: Path::new("test.tsx"),
+                content,
+            };
+            let violations = rule.check_file(&ctx);
+            assert!(violations.is_empty());
+        }
+
+        #[test]
+        fn skip_strings_outside_template_literal() {
+            let config = make_skip_config("process.env", false, true);
+            let rule = BannedPatternRule::new(&config).unwrap();
+            let content = "const val = process.env.SECRET;";
+            let ctx = ScanContext {
+                file_path: Path::new("test.tsx"),
+                content,
+            };
+            let violations = rule.check_file(&ctx);
+            assert_eq!(violations.len(), 1);
+        }
+
+        #[test]
+        fn skip_strings_inside_regular_string() {
+            let config = make_skip_config("process.env", false, true);
+            let rule = BannedPatternRule::new(&config).unwrap();
+            let content = r#"const msg = "Use process.env.SECRET";"#;
+            let ctx = ScanContext {
+                file_path: Path::new("test.tsx"),
+                content,
+            };
+            let violations = rule.check_file(&ctx);
+            assert!(violations.is_empty());
+        }
+
+        #[test]
+        fn skip_strings_false_still_flags() {
+            let config = make_skip_config("process.env", false, false);
+            let rule = BannedPatternRule::new(&config).unwrap();
+            let content = "const docs = `Use process.env.SECRET for config`;";
+            let ctx = ScanContext {
+                file_path: Path::new("test.tsx"),
+                content,
+            };
+            let violations = rule.check_file(&ctx);
+            assert_eq!(violations.len(), 1);
+        }
     }
 }

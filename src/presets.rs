@@ -325,6 +325,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                 regex: true,
                 file_contains: Some("use client".into()),
                 message: "Private env vars are undefined in client components — prefix with NEXT_PUBLIC_".into(),
+                skip_strings: true,
                 ..Default::default()
             },
             TomlRule {
@@ -835,6 +836,7 @@ fn preset_rules(preset: Preset) -> Vec<TomlRule> {
                     regex: true,
                     file_contains: Some("use client".into()),
                     message: "Private env vars are undefined in client components — prefix with NEXT_PUBLIC_".into(),
+                    skip_strings: true,
                     ..Default::default()
                 },
                 TomlRule {
@@ -1439,6 +1441,11 @@ pub fn resolve_scoped_rules(
 
             // User rules with the same id override scoped preset rules
             if user_rules.iter().any(|u| u.id == rule.id) {
+                continue;
+            }
+
+            // Skip rules listed in this scope's exclude_rules
+            if entry.exclude_rules.contains(&rule.id) {
                 continue;
             }
 
@@ -2365,6 +2372,7 @@ mod tests {
         let scoped = vec![ScopedPreset {
             preset: "nextjs".into(),
             path: "apps/web".into(),
+            exclude_rules: vec![],
         }];
         let rules = resolve_scoped_rules(&scoped, &[]).unwrap();
         assert!(!rules.is_empty());
@@ -2383,6 +2391,7 @@ mod tests {
         let scoped = vec![ScopedPreset {
             preset: "ai-safety".into(),
             path: "packages/core".into(),
+            exclude_rules: vec![],
         }];
         let rules = resolve_scoped_rules(&scoped, &[]).unwrap();
         // banned-dependency rules have no glob by default — should get scoped catch-all
@@ -2400,6 +2409,7 @@ mod tests {
         let scoped = vec![ScopedPreset {
             preset: "nextjs".into(),
             path: "apps/web".into(),
+            exclude_rules: vec![],
         }];
         let user_rules = vec![TomlRule {
             id: "use-next-image".into(),
@@ -2423,6 +2433,7 @@ mod tests {
             &[ScopedPreset {
                 preset: "nextjs".into(),
                 path: "apps/web".into(),
+                exclude_rules: vec![],
             }],
             &[],
         )
@@ -2442,6 +2453,7 @@ mod tests {
         let scoped = vec![ScopedPreset {
             preset: "nonexistent".into(),
             path: "apps/web".into(),
+            exclude_rules: vec![],
         }];
         let result = resolve_scoped_rules(&scoped, &[]);
         assert!(result.is_err());
@@ -2455,6 +2467,7 @@ mod tests {
         let scoped = vec![ScopedPreset {
             preset: "security".into(),
             path: "apps/api".into(),
+            exclude_rules: vec![],
         }];
         let rules = resolve_scoped_rules(&scoped, &[]).unwrap();
         let fp_rule = rules.iter().find(|r| r.id == "no-env-files").unwrap();
@@ -2472,6 +2485,7 @@ mod tests {
         let scoped = vec![ScopedPreset {
             preset: "security".into(),
             path: "apps/api".into(),
+            exclude_rules: vec![],
         }];
         let rules = resolve_scoped_rules(&scoped, &[]).unwrap();
         let console_rule = rules.iter().find(|r| r.id == "no-console-log").unwrap();
@@ -2481,5 +2495,43 @@ mod tests {
                 "expected exclude_glob to start with 'apps/api/', got: {eg}"
             );
         }
+    }
+
+    #[test]
+    fn resolve_scoped_exclude_rules_skips_listed() {
+        let scoped = vec![ScopedPreset {
+            preset: "nextjs".into(),
+            path: "apps/web".into(),
+            exclude_rules: vec!["use-next-image".into()],
+        }];
+        let rules = resolve_scoped_rules(&scoped, &[]).unwrap();
+        assert!(
+            !rules.iter().any(|r| r.id == "use-next-image"),
+            "excluded rule should not appear in resolved rules"
+        );
+        // Other rules from the preset should still be present
+        assert!(
+            rules.iter().any(|r| r.id == "no-sync-scripts"),
+            "non-excluded rules should still be present"
+        );
+    }
+
+    #[test]
+    fn resolve_scoped_exclude_rules_empty_is_noop() {
+        let scoped_empty = vec![ScopedPreset {
+            preset: "nextjs".into(),
+            path: "apps/web".into(),
+            exclude_rules: vec![],
+        }];
+        let scoped_none = vec![ScopedPreset {
+            preset: "nextjs".into(),
+            path: "apps/web".into(),
+            exclude_rules: vec![],
+        }];
+        let rules_empty = resolve_scoped_rules(&scoped_empty, &[]).unwrap();
+        let rules_none = resolve_scoped_rules(&scoped_none, &[]).unwrap();
+        let ids_empty: Vec<&str> = rules_empty.iter().map(|r| r.id.as_str()).collect();
+        let ids_none: Vec<&str> = rules_none.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(ids_empty, ids_none, "empty exclude_rules should be a no-op");
     }
 }
